@@ -51,6 +51,11 @@ volatile int* pSW =  (int*) SW_BASE;
 #define WIDTH  320
 #define HEIGHT 240
 
+#define RED   0xF800
+#define BLACK 0
+#define CLEAR 0
+
+
 int pixel_buffer_start; // global variable
 volatile int* pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
 
@@ -58,6 +63,7 @@ volatile int* pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
 // Prototypes
 void wait_for_vsync();
 void clear_screen();
+void plot_pixel(int x, int y, short int line_color);
 
 ///////////////////////////////////////////////
 
@@ -85,16 +91,16 @@ volatile int* pPS2 = (int*) PS2_BASE;
 #define TRUE  1
 #define FALSE 0
 
+#define GAME_WIDTH  9
+#define GAME_HEIGHT 9
 
+int headX=0;
+int headY=0;
 
 //////////////////////////////////////////
 
 int main(void)
 {
-
-    unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
-    int PS2_data, RVALID;
-
     // Wait for v-sync before writing to pixel buffer.
     wait_for_vsync();
 
@@ -103,43 +109,72 @@ int main(void)
     // Clear screen.
     clear_screen();
 
+    int byte1 = 0, byte2 = 0, byte3 = 0;
+	int previousKey = byte2;
+    int PS2_data, RVALID;
+
+	int acceptInput = TRUE;
+
     while (TRUE)
     {
-        PS2_data = *(pPS2); // read the Data register in the PS/2 port
+        // Handle input only on key change.
+//		if (byte3 != previousKey)
+//		{
+//			previousKey = byte3;
+
+			// Key Detection.
+			if (byte3 == BREAK)
+			{
+				acceptInput = TRUE; // Wait for a break before accepting input.
+				printf("break\n");
+			}
+			else if (byte3 == LEFT_KEY && acceptInput)
+			{
+				acceptInput = FALSE;
+
+				printf("LEFT KEY\n");
+				plot_pixel(headX, headY, CLEAR);
+				if (headX > 0) {headX--;}
+			}
+			else if (byte3 == RIGHT_KEY && acceptInput)
+			{
+				acceptInput = FALSE;
+
+				printf("RIGHT KEY\n");
+				plot_pixel(headX, headY, CLEAR);
+				if (headX < GAME_WIDTH) {headX++;}
+			}
+			else if (byte3 == UP_KEY && acceptInput)
+			{
+				acceptInput = FALSE;
+
+				printf("UP KEY\n");
+				plot_pixel(headX, headY, CLEAR);
+				if (headY > 0) {headY--;}
+			}
+			else if (byte3 == DOWN_KEY && acceptInput)
+			{
+				acceptInput = FALSE;
+
+				printf("DOWN KEY\n");
+				plot_pixel(headX, headY, CLEAR);
+				if (headY < GAME_HEIGHT) {headY++;}
+			}
+
+	//	}
+
+		plot_pixel(headX, headY, RED);
+
+		PS2_data = *(pPS2); // read the Data register in the PS/2 port
 
         RVALID = (PS2_data & 0x8000);    // extract the RVALID field
 
         /* always save the last three bytes received */
         if (RVALID != 0)
         {
-            byte1 = byte2;
-            byte2 = byte3;
             byte3 = PS2_data & 0xFF;
-        }
+		}
 
-        // Display last byte on Red LEDs
-
-        // Key Detection.
-        if (byte2 == LEFT_KEY)
-        {
-            printf("LEFT KEY\n");
-        }
-        else if (byte2 == RIGHT_KEY)
-        {
-            printf("RIGHT KEY\n");
-        }
-        else if (byte2 == UP_KEY)
-        {
-            printf("UP KEY\n");
-        }
-        else if (byte2 == DOWN_KEY)
-        {
-            printf("DOWN KEY\n");
-        }
-        else if (byte2 == BREAK)
-        {
-            printf("BREAK\n");
-        }
     }
 
 }
@@ -167,6 +202,12 @@ void clear_screen()
 }
 
 
+void plot_pixel(int x, int y, short int line_color)
+{
+        short int *one_pixel_address;
+        one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
+        *one_pixel_address = line_color;
+}
 
 
 
