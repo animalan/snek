@@ -29,7 +29,7 @@ volatile int* pSW =  (int*) SW_BASE;
 
 
 /////////////////////////////////////////////// AUDIO
-#define AUDIO_BASE			         0xFF203040
+#define AUDIO_BASE                   0xFF203040
 // CONTROL      WI RI ... CW CR WE RE
 // FIFOSPACE    WSLC WSRC RALC RARC
 // LEFT DATA
@@ -92,78 +92,78 @@ volatile int* pPS2 = (int*) PS2_BASE;
 int main(void)
 {
 
-	unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
+    unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
     int PS2_data, RVALID;
 
-	// Wait for v-sync before writing to pixel buffer.
+    // Wait for v-sync before writing to pixel buffer.
     wait_for_vsync();
 
-	pixel_buffer_start = *pixel_ctrl_ptr;
+    pixel_buffer_start = *pixel_ctrl_ptr;
 
-	// Clear screen.
+    // Clear screen.
     clear_screen();
 
-	while (TRUE)
-	{
-		PS2_data = *(pPS2);	// read the Data register in the PS/2 port
+    while (TRUE)
+    {
+        PS2_data = *(pPS2); // read the Data register in the PS/2 port
 
-		RVALID = (PS2_data & 0x8000);	// extract the RVALID field
+        RVALID = (PS2_data & 0x8000);    // extract the RVALID field
 
-		/* always save the last three bytes received */
-		if (RVALID != 0)
-		{
-			byte1 = byte2;
-			byte2 = byte3;
-			byte3 = PS2_data & 0xFF;
-		}
+        /* always save the last three bytes received */
+        if (RVALID != 0)
+        {
+            byte1 = byte2;
+            byte2 = byte3;
+            byte3 = PS2_data & 0xFF;
+        }
 
-		// Display last byte on Red LEDs
+        // Display last byte on Red LEDs
 
-		// Key Detection.
-		if (byte2 == LEFT_KEY)
-		{
-			printf("LEFT KEY\n");
-		}
-		else if (byte2 == RIGHT_KEY)
-		{
-			printf("RIGHT KEY\n");
-		}
-		else if (byte2 == UP_KEY)
-		{
-			printf("UP KEY\n");
-		}
-		else if (byte2 == DOWN_KEY)
-		{
-			printf("DOWN KEY\n");
-		}
-		else if (byte2 == BREAK)
-		{
-			printf("BREAK\n");
-		}
-	}
+        // Key Detection.
+        if (byte2 == LEFT_KEY)
+        {
+            printf("LEFT KEY\n");
+        }
+        else if (byte2 == RIGHT_KEY)
+        {
+            printf("RIGHT KEY\n");
+        }
+        else if (byte2 == UP_KEY)
+        {
+            printf("UP KEY\n");
+        }
+        else if (byte2 == DOWN_KEY)
+        {
+            printf("DOWN KEY\n");
+        }
+        else if (byte2 == BREAK)
+        {
+            printf("BREAK\n");
+        }
+    }
 
 }
 
 void wait_for_vsync()
 {
-	*pixel_ctrl_ptr = 1;
-	int status = *(pixel_ctrl_ptr + 3);
+    *pixel_ctrl_ptr = 1;
+    int status = *(pixel_ctrl_ptr + 3);
 
-	while ((status & 0x01) != 0) { status = *(pixel_ctrl_ptr + 3); }
+    while ((status & 0x01) != 0) { status = *(pixel_ctrl_ptr + 3); }
 }
 
 void clear_screen()
 {
     volatile short int *one_pixel_address;
 
-	for (int y = 0; y < HEIGHT; ++y)
-	{
-		for (int x = 0; x < WIDTH; ++x)
-		{
-			one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
-			*one_pixel_address = 0;
-		}
-	}
+    for (int y = 0; y < HEIGHT; ++y)
+    {
+        for (int x = 0; x < WIDTH; ++x)
+        {
+            one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
+            *one_pixel_address = 0;
+        }
+    }
 }
 
 
@@ -211,7 +211,7 @@ void clear_screen()
 // Mouse.
 // if ( (byte2 == 0xAA) && (byte3 == 0x00) )
 // {
-	// *(PS2_ptr) = 0xF4;
+    // *(PS2_ptr) = 0xF4;
 // }
 
 
