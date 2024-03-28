@@ -55,13 +55,12 @@ volatile int* pSW =  (int*) SW_BASE;
 #define WHITE 0xFFFF
 
 #define BLACK 0
-#define CLEAR 0
+#define CLEAR BLACK
 
 #define SECOND 10000000
 
 int pixel_buffer_start; // global variable
 volatile int* pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
-
 
 // Prototypes
 void wait_for_vsync();
@@ -94,16 +93,31 @@ volatile int* pPS2 = (int*) PS2_BASE;
 #define TRUE  1
 #define FALSE 0
 
-#define GAME_WIDTH  20
-#define GAME_HEIGHT 20
+#define GAME_WIDTH  50
+#define GAME_HEIGHT GAME_WIDTH
+#define DELAY 900000
 
-int headX=0;
-int headY=0;
+#define MAX_SNAKE_LENGTH GAME_WIDTH * GAME_WIDTH
 
-int dirX=0;
-int dirY=0;
+int headX = 0;
+int headY = 0;
+
+int dirX = 0;
+int dirY = 0;
 
 int acceptInput = TRUE;
+int snakeLength = 1;
+
+struct cell
+{
+    int x;
+    int y;
+	int active;
+};
+
+struct cell snake[MAX_SNAKE_LENGTH];
+
+// int snake[MAX_SNAKE_LENGTH] = {0};
 
 //////////////////////////////////////////
 
@@ -167,12 +181,6 @@ void input()
 	}
 }
 
-void boundaryCheck()
-{
-	// Boundary checks.
-	if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) {dirX = 0;}
-	if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT){dirY = 0;}
-}
 
 int main(void)
 {
@@ -186,38 +194,68 @@ int main(void)
 
 	srand(time(NULL));
     int randX = rand() % (GAME_WIDTH + 1);
-	int randY = rand() % (GAME_WIDTH + 1);
+	int randY = 0;
 
 	plot_pixel(randX, randY, RED);
+
+	snake[0].active = TRUE; // snakeLength = 1 by default.
 
     while (TRUE)
     {
 		input();
 
-		boundaryCheck();
-
+		// Boundary checks.
+		if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) {dirX = 0;}
+		if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT){dirY = 0;}
 
 		printf("X: %d   Y: %d \n", headX, headY);
 
 		headX += dirX;
 		headY += dirY;
 
-		// Draw pixel
-		plot_pixel(headX, headY, WHITE);
+		snake[0].x = headX;
+		snake[0].y = headY;
 
-		int duration = 1000000;
+		// Avoid snake from collapsing into itself.
+		if (dirX != 0 || dirY != 0)
+		{
+			// Update the position of snake body.
+			for (int i = snakeLength - 1; i > 0; --i)
+			{
+				snake[i].x = snake[i-1].x;
+				snake[i].y = snake[i-1].y;
+			}
+		}
+
+		// Draw snake
+		for (int i = 0; i < snakeLength; ++i)
+		{
+			plot_pixel(snake[i].x, snake[i].y, WHITE);
+		}
+
+
+		int duration = DELAY;
+
 		while(duration > 0) {duration--;}
 
-		// Clear after delay
-		plot_pixel(headX, headY, BLACK);
+		// Clear after delay.
+		for (int i = 0; i < snakeLength; ++i)
+		{
+			plot_pixel(snake[i].x, snake[i].y, CLEAR);
+		}
 
 		// Colliding with food.
 		if (headX == randX && headY == randY)
 		{
+			printf("EATEN\n");
+
 			randX = rand() % (GAME_WIDTH + 1);
-			randY = rand() % (GAME_WIDTH + 1);
+			randY = 0;
 
 			plot_pixel(randX, randY, RED);
+
+			snakeLength++; 			            // Increase snake length.
+			snake[snakeLength-1].active = TRUE; // Set cell to active.
 		}
 	}
 }
@@ -256,6 +294,14 @@ void plot_pixel(int x, int y, short int line_color)
         one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
         *one_pixel_address = line_color;
 }
+
+
+// PS2 Interrupts
+// Maze Generation
+// Scaling
+// Double buffering
+// Better random number generation
+
 
 
 
