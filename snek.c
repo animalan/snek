@@ -52,9 +52,12 @@ volatile int* pSW =  (int*) SW_BASE;
 #define HEIGHT 240
 
 #define RED   0xF800
+#define WHITE 0xFFFF
+
 #define BLACK 0
 #define CLEAR 0
 
+#define SECOND 10000000
 
 int pixel_buffer_start; // global variable
 volatile int* pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
@@ -64,7 +67,7 @@ volatile int* pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
 void wait_for_vsync();
 void clear_screen();
 void plot_pixel(int x, int y, short int line_color);
-
+void delay (int duration);
 ///////////////////////////////////////////////
 
 
@@ -91,13 +94,85 @@ volatile int* pPS2 = (int*) PS2_BASE;
 #define TRUE  1
 #define FALSE 0
 
-#define GAME_WIDTH  9
-#define GAME_HEIGHT 9
+#define GAME_WIDTH  20
+#define GAME_HEIGHT 20
 
 int headX=0;
 int headY=0;
 
+int dirX=0;
+int dirY=0;
+
+int acceptInput = TRUE;
+
 //////////////////////////////////////////
+
+
+
+void input()
+{
+	unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
+	int previousKey = byte2;
+    int PS2_data, RVALID;
+
+	// Handle key input via polling.
+
+	PS2_data = *(pPS2);              // read the Data register in the PS/2 port
+    RVALID = (PS2_data & 0x8000);    // extract the RVALID field
+
+	if (RVALID != 0)
+	{
+		byte3 = PS2_data & 0xFF;
+	}
+
+	if (byte3 == BREAK)
+	{
+		acceptInput = TRUE; // Wait for a break before accepting input.
+	}
+	else if (byte3 == LEFT_KEY && acceptInput)
+	{
+		acceptInput = FALSE;
+
+		printf("LEFT KEY\n");
+
+		dirX = -1;
+		dirY =  0;
+	}
+	else if (byte3 == RIGHT_KEY && acceptInput)
+	{
+		acceptInput = FALSE;
+
+		printf("RIGHT KEY\n");
+
+		dirX =  1;
+		dirY =  0;
+	}
+	else if (byte3 == UP_KEY && acceptInput)
+	{
+		acceptInput = FALSE;
+
+		printf("UP KEY\n");
+
+		dirX =  0; // Set direction
+		dirY = -1;
+	}
+	else if (byte3 == DOWN_KEY && acceptInput)
+	{
+		acceptInput = FALSE;
+
+		printf("DOWN KEY\n");
+
+		dirX =  0;
+		dirY =  1;
+	}
+}
+
+void boundaryCheck()
+{
+	// Boundary checks.
+	if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) {dirX = 0;}
+	if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT){dirY = 0;}
+}
 
 int main(void)
 {
@@ -109,74 +184,47 @@ int main(void)
     // Clear screen.
     clear_screen();
 
-    int byte1 = 0, byte2 = 0, byte3 = 0;
-	int previousKey = byte2;
-    int PS2_data, RVALID;
+	srand(time(NULL));
+    int randX = rand() % (GAME_WIDTH + 1);
+	int randY = rand() % (GAME_WIDTH + 1);
 
-	int acceptInput = TRUE;
+	plot_pixel(randX, randY, RED);
 
     while (TRUE)
     {
-        // Handle input only on key change.
-//		if (byte3 != previousKey)
-//		{
-//			previousKey = byte3;
+		input();
 
-			// Key Detection.
-			if (byte3 == BREAK)
-			{
-				acceptInput = TRUE; // Wait for a break before accepting input.
-				printf("break\n");
-			}
-			else if (byte3 == LEFT_KEY && acceptInput)
-			{
-				acceptInput = FALSE;
+		boundaryCheck();
 
-				printf("LEFT KEY\n");
-				plot_pixel(headX, headY, CLEAR);
-				if (headX > 0) {headX--;}
-			}
-			else if (byte3 == RIGHT_KEY && acceptInput)
-			{
-				acceptInput = FALSE;
 
-				printf("RIGHT KEY\n");
-				plot_pixel(headX, headY, CLEAR);
-				if (headX < GAME_WIDTH) {headX++;}
-			}
-			else if (byte3 == UP_KEY && acceptInput)
-			{
-				acceptInput = FALSE;
+		printf("X: %d   Y: %d \n", headX, headY);
 
-				printf("UP KEY\n");
-				plot_pixel(headX, headY, CLEAR);
-				if (headY > 0) {headY--;}
-			}
-			else if (byte3 == DOWN_KEY && acceptInput)
-			{
-				acceptInput = FALSE;
+		headX += dirX;
+		headY += dirY;
 
-				printf("DOWN KEY\n");
-				plot_pixel(headX, headY, CLEAR);
-				if (headY < GAME_HEIGHT) {headY++;}
-			}
+		// Draw pixel
+		plot_pixel(headX, headY, WHITE);
 
-	//	}
+		int duration = 1000000;
+		while(duration > 0) {duration--;}
 
-		plot_pixel(headX, headY, RED);
+		// Clear after delay
+		plot_pixel(headX, headY, BLACK);
 
-		PS2_data = *(pPS2); // read the Data register in the PS/2 port
+		// Colliding with food.
+		if (headX == randX && headY == randY)
+		{
+			randX = rand() % (GAME_WIDTH + 1);
+			randY = rand() % (GAME_WIDTH + 1);
 
-        RVALID = (PS2_data & 0x8000);    // extract the RVALID field
-
-        /* always save the last three bytes received */
-        if (RVALID != 0)
-        {
-            byte3 = PS2_data & 0xFF;
+			plot_pixel(randX, randY, RED);
 		}
+	}
+}
 
-    }
-
+void delay (int duration)
+{
+	while(duration > 0) {duration--;}
 }
 
 void wait_for_vsync()
