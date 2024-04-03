@@ -74,7 +74,7 @@ void delay (int duration);
 
 
 ////////////////////////////////////////// PS/2
-#define PS2_BASE  0xFF200108
+#define PS2_BASE  0xFF200100 // Address required for DE1-SOC
 
 // Arrow Keys
 #define LEFT_KEY  0x6B
@@ -257,7 +257,7 @@ int main(void)
 		if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) {dirX = 0;}
 		if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT){dirY = 0;}
 
-		printf("X: %d   Y: %d \n", headX, headY);
+		// printf("X: %d   Y: %d \n", headX, headY);
 
 		headX += dirX;
 		headY += dirY;
