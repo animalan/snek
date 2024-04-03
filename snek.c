@@ -99,6 +99,8 @@ volatile int* pPS2 = (int*) PS2_BASE;
 
 #define MAX_SNAKE_LENGTH GAME_WIDTH * GAME_WIDTH
 
+#define SCALE 4
+
 int headX = 0;
 int headY = 0;
 
@@ -182,6 +184,53 @@ void input()
 }
 
 
+void delay (int duration)
+{
+	while(duration > 0) {duration--;}
+}
+
+void wait_for_vsync()
+{
+    *pixel_ctrl_ptr = 1;
+    int status = *(pixel_ctrl_ptr + 3);
+
+    while ((status & 0x01) != 0) { status = *(pixel_ctrl_ptr + 3); }
+}
+
+void clear_screen()
+{
+    volatile short int *one_pixel_address;
+
+    for (int y = 0; y < HEIGHT; ++y)
+    {
+        for (int x = 0; x < WIDTH; ++x)
+        {
+            one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
+            *one_pixel_address = 0;
+        }
+    }
+}
+
+
+void plot_pixel(int x, int y, short int line_color)
+{
+        short int *one_pixel_address;
+        one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
+        *one_pixel_address = line_color;
+}
+
+void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
+{  
+    // Draw a (LENGTH x LENGTH) Box.  
+    for (int j = 0; j < LENGTH; ++j)
+    {
+        for (int k = 0; k < LENGTH; ++k)
+        {	
+            plot_pixel(startX + k, startY + j, COLOUR);
+        }
+    }
+}
+
 int main(void)
 {
     // Wait for v-sync before writing to pixel buffer.
@@ -228,9 +277,9 @@ int main(void)
 		}
 
 		// Draw snake
-		for (int i = 0; i < snakeLength; ++i)
-		{
-			plot_pixel(snake[i].x, snake[i].y, WHITE);
+		for (int i = 0; i < snakeLength; i+=SCALE)
+		{   
+            boxBuilder(snake[0].x, snake[0].y, SCALE, WHITE);
 		}
 
 
@@ -241,7 +290,7 @@ int main(void)
 		// Clear after delay.
 		for (int i = 0; i < snakeLength; ++i)
 		{
-			plot_pixel(snake[i].x, snake[i].y, CLEAR);
+            boxBuilder(snake[0].x, snake[0].y, SCALE, CLEAR);
 		}
 
 		// Colliding with food.
@@ -259,42 +308,6 @@ int main(void)
 		}
 	}
 }
-
-void delay (int duration)
-{
-	while(duration > 0) {duration--;}
-}
-
-void wait_for_vsync()
-{
-    *pixel_ctrl_ptr = 1;
-    int status = *(pixel_ctrl_ptr + 3);
-
-    while ((status & 0x01) != 0) { status = *(pixel_ctrl_ptr + 3); }
-}
-
-void clear_screen()
-{
-    volatile short int *one_pixel_address;
-
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        for (int x = 0; x < WIDTH; ++x)
-        {
-            one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
-            *one_pixel_address = 0;
-        }
-    }
-}
-
-
-void plot_pixel(int x, int y, short int line_color)
-{
-        short int *one_pixel_address;
-        one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
-        *one_pixel_address = line_color;
-}
-
 
 // PS2 Interrupts
 // Maze Generation
@@ -348,5 +361,3 @@ void plot_pixel(int x, int y, short int line_color)
 // {
     // *(PS2_ptr) = 0xF4;
 // }
-
-
