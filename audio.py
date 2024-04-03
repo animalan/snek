@@ -21,7 +21,8 @@ def process_text_file(input_file, output_file):
       file.write('\n'.join(filtered_lines))
 
 # File paths
-input_file_path = r'input.txt'
+input_file_path = r'input.txt' #you get input.text by running "od -t x untitled.raw >input.txt".
+#untiled.raw is the file u get after exporting mp3 into raw through audacity
 output_file_path = r'output.txt'
 
 # Process the text file
