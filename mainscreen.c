@@ -278,7 +278,7 @@ struct fb_t Buffer1; // the front buffer
 struct fb_t Buffer2; // the back buffer
 
 
-#define SCREEN_WIDTH 320
+#define SCREEN_WIDTH 512
 #define SCREEN_LENGTH 240
 
 // Sprite definition
@@ -286,7 +286,7 @@ struct fb_t Buffer2; // the back buffer
 void clear_screen()
 {
     int x, y;
-    for (x = 0; x < 320; x++)
+    for (x = 0; x < 512; x++)
         for (y = 0; y < 240; y++)
 
             Buffer1.pixels[y][x] = 0x00; // Clear pixel at (x, y) with black color
@@ -295,7 +295,7 @@ void clear_screen()
 void draw_whole_screen(unsigned short sprite[SCREEN_LENGTH][SCREEN_WIDTH])
 {
 	int x, y;
-	for (x = 0; x < 320; x += 1)
+	for (x = 0; x < 512; x += 1)
 		for (y = 0; y < 240; y += 1)
 		{
 			Buffer1.pixels[y][x] = sprite[y][x];
