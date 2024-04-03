@@ -30,7 +30,6 @@ int main () {
    clear_screen();
    int x;
 
-
    // Write Hello, world!
    char* hw = "Hello, world!";
    x = 15;

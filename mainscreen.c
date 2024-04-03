@@ -260,7 +260,7 @@ struct PIT_t {
 struct PIT_t *const buttonp = ((struct PIT_t *)0xFF200050);
 
 struct fb_t {
-    unsigned short pixels[240][320];
+    unsigned short pixels[240][512];
 };
 
 struct videoout_t {
@@ -318,6 +318,8 @@ int main(void)
 		
 	clear_screen(); // Clear the screen
 	draw_whole_screen(start_page);
+	fbswap();
+	
 
     return 0;
 }
