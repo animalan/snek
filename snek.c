@@ -297,17 +297,107 @@ bool isReadEmpty()
 }
 
 
+void displayHex(int number)
+{
+    // Max exceeded.
+    if (number > 999999) {return;}
+
+    int offsetSeg0 = 0;
+    int offsetSeg1 = 0;
+
+    int hexDataSeg0 = 0;
+    int hexDataSeg1 = 0;
+    
+    int hexDigit = 0;
+    int digit = 0;
+
+    while (number > 0 )
+    {
+        digit =  number % 10;
+
+        printf("%d\n", digit);
+        
+   
+             if (digit == 0) { hexDigit = HEX_ZERO; } 
+        else if (digit == 1) { hexDigit = HEX_ONE; } 
+        else if (digit == 2) { hexDigit = HEX_TWO; } 
+        else if (digit == 3) { hexDigit = HEX_THREE; } 
+        else if (digit == 4) { hexDigit = HEX_FOUR; } 
+        else if (digit == 5) { hexDigit = HEX_FIVE; } 
+        else if (digit == 6) { hexDigit = HEX_SIX; } 
+        else if (digit == 7) { hexDigit = HEX_SEVEN; } 
+        else if (digit == 8) { hexDigit = HEX_EIGHT; } 
+        else if (digit == 9) { hexDigit = HEX_NINE; } 
+
+
+        // Max 6 digits (6 hex displays)
+        // ADDR_7SEG1, ADDR_7SEG1, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0
+        // First 2 on ADDR_7SEG1, Last 4 on ADDR_7SEG0
+        if (offsetSeg0 > 3)
+        {
+            hexDataSeg1 += hexDigit << (8 * offsetSeg1);
+            offsetSeg1++;    
+        }
+        else
+        {
+            hexDataSeg0 += hexDigit << (8 * offsetSeg0);
+            *ADDR_7SEG0 = hexDataSeg0; 
+            // while(true) {}
+
+            offsetSeg0++;
+        }
+
+        number /= 10;
+    }
+
+
+    // Write to hex displays.
+    *ADDR_7SEG0 = hexDataSeg0; // HEX2 - HEX0
+    *ADDR_7SEG1 = hexDataSeg1; // HEX5 - HEX3
+
+    // hexDataSeg1 += HEX_EMPTY << (8 * offsetSeg1);
+    // printf("%d \n", number);
+
+}
+
 
 int main(void)
 {
 
 
+    // int number = 9;
+    
+    // // Last digit to second digit.
+    // while (number > 10 )
+    // {
+    //     printf("%d \n", number % 10);
+    //     number /= 10;
+    // }
+
+    // // The first digit.
+    // printf("%d \n", number);
+
+    for (int i = 0; i < 1000000; ++i )
+    {
+        displayHex(i);
+
+		int duration = DELAY;
+		while(duration > 0) {duration--;}
+        
+        displayHex(000000);
+    }
+
+    while(true) {}
+
+    // printf("%d \n);
+    
+
+    
 
     *ADDR_7SEG0 = 0x00000000;
     
     
     *ADDR_7SEG0 =  HEX_EMPTY << 8 * 4 + HEX_EMPTY << 8 * 3 + HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
-    
     *ADDR_7SEG1 =  HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
 
 
