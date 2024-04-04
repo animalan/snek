@@ -363,54 +363,6 @@ void displayHex(int number)
 
 int main(void)
 {
-
-
-    // int number = 9;
-    
-    // // Last digit to second digit.
-    // while (number > 10 )
-    // {
-    //     printf("%d \n", number % 10);
-    //     number /= 10;
-    // }
-
-    // // The first digit.
-    // printf("%d \n", number);
-
-    for (int i = 0; i < 1000000; ++i )
-    {
-        displayHex(i);
-
-		int duration = DELAY;
-		while(duration > 0) {duration--;}
-        
-        displayHex(000000);
-    }
-
-    while(true) {}
-
-    // printf("%d \n);
-    
-
-    
-
-    *ADDR_7SEG0 = 0x00000000;
-    
-    
-    *ADDR_7SEG0 =  HEX_EMPTY << 8 * 4 + HEX_EMPTY << 8 * 3 + HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
-    *ADDR_7SEG1 =  HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
-
-
-    //  + HEX_ZERO + << (7 * 2) + HEX_ZERO << 7 + HEX_ZERO ;
-    
-
-
-
-
-    // *ADDR_7SEG2 = 0;
-
-    while(true) {}
-
     // Wait for v-sync before writing to pixel buffer.
     wait_for_vsync();
 
@@ -517,6 +469,7 @@ int main(void)
             score = snakeLength - 1;
 
             *pLED = score;
+            displayHex(score);
 		}
 
         // Draw food.
