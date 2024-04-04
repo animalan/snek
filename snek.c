@@ -361,6 +361,187 @@ void displayHex(int number)
 }
 
 
+// struct mazeCell  =
+// {
+//     bool UP = false;
+//     bool DOWN = false;
+//     bool RIGHT = false;
+//     bool LEFT = false;
+// }
+
+#define MAZE_SIZE 20
+
+int maze[MAZE_SIZE][MAZE_SIZE];
+
+// {x,y}
+int dir[4][2] = 
+{
+    {0, -1},  // North
+    {1, 0},  // East
+    {0, 1}, // South
+    {-1, 0}  // West
+};
+
+// if (!maze[currY][currX].UP)
+// {
+//     newX = currX;
+//     newY = currY + 1;
+// } 
+// else if (!maze[currY][currX].DOWN)
+// {
+//     newX = currX;
+//     newY = currY - 1;
+// } 
+// else if (!maze[currY][currX].RIGHT)
+// {
+//     newX = currX + 1;
+//     newY = currY;
+// } 
+// else if (!maze[currY][currX].LEFT)
+// {
+//     newX = currX - 1;
+//     newY = currY;
+// } 
+// else
+// {
+//     return;
+// }
+
+const int UP = 0;
+const int RIGHT = 1;
+const int DOWN = 2;
+const int LEFT = 3;
+
+void swap (int* x , int* y)
+{
+	int temp = *x;
+	*x = *y;
+	*y = temp;
+}
+
+void draw_line(int x0, int y0, int x1, int y1, int line_color)
+{
+    int is_steep = (int)abs(y1 - y0) > (int)abs(x1 - x0);
+
+    if (is_steep)
+    {
+        swap(&x0, &y0);
+        swap(&x1, &y1);
+    }
+
+	if (x0 > x1)
+	{
+		swap(&x0, &x1);
+		swap(&y0, &y1);
+	}
+
+
+    int deltax = x1 - x0;
+    int deltay = abs(y1 - y0);
+    int error = -(deltax / 2);
+    int y = y0;
+	int y_step = 1;
+
+    if (y0 < y1)
+    {
+        y_step = 1;
+    }
+    else
+    {
+        y_step = -1;
+    }
+
+    for (int x = x0; x <= x1; x++)
+    {
+        if (is_steep)
+        {
+            plot_pixel(y, x, line_color);
+        }
+        else
+        {
+            plot_pixel(x, y, line_color);
+        }
+
+        error = error + deltay;
+
+        if (error > 0)
+        {
+            y = y + y_step;
+            error = error - deltax;
+        }
+    }
+
+}
+
+// DFS (Recursive Backtracking) Maze Generation 
+void path(int currX, int currY)
+{   
+    int dirOrder = 0;
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        bool newDirFound = false;
+        int randDir;
+
+        while (!newDirFound)
+        {
+            randDir = rand() % 4;
+
+            if ((dirOrder & (1 << randDir)) == 0)
+            {
+                dirOrder |= (1u << (randDir));
+                newDirFound = true;
+            }
+        }
+
+        printf("%d\n", randDir);
+        int newX = currX + dir[randDir][0];
+        int newY = currY + dir[randDir][1];
+
+        if ((0 <= newY && newY < MAZE_SIZE) && (0 <= newX && newX < MAZE_SIZE) && (maze[newY][newX] == 0))
+        {
+            // Current cell has been visited.
+            maze[currY][currX] = 1;
+
+            // // Set ith bit to 1.
+            // maze[currY][currX] |= (1u << i);
+            
+            // if (i == UP)
+            // {
+            //     maze[newY][newX] |= (1u << DOWN);
+            // }
+            // else if (i == DOWN)
+            // {
+            //     maze[newY][newX] |= (1u << DOWN);
+            // }
+            // else if (i == RIGHT)
+            // {
+            //     maze[newY][newX] |= (1u << LEFT);
+
+            // }
+            // else if (i == LEFT)
+            // {
+            //     maze[newY][newX] |= (1u << RIGHT);
+            // }
+            // plot_pixel(newX * 1, newY * 1, WHITE);     
+            
+            // for (int x = currX; x != newX * 2; x+= dir[randDir][0])
+            // {
+            //     plot_pixel(x, newY, WHITE);
+            // }       
+
+            draw_line(currX * 2, currY * 2, newX * 2, newY * 2, WHITE);
+
+            // plot_pixel(newX * 2, newY * 2, WHITE);
+            printf("%d, %d \n", newX, newY);
+            path(newX, newY);
+
+        }
+    }
+
+    return;
+}
+
 int main(void)
 {
     // Wait for v-sync before writing to pixel buffer.
@@ -375,6 +556,31 @@ int main(void)
     
 	int randX = rand() % (RANDOM_RANGE + 1);
 	int randY = 0;
+    
+    for (int y = 0; y < 20; ++y)
+    {
+        for (int x = 0; x < 20; ++x)
+        {
+            plot_pixel(x * 2, y * 2, RED);
+        }
+    }
+
+    // plot_pixel(5, 0, WHITE);
+    for (int i = 0; i < MAZE_SIZE; ++i)
+    {
+        for (int j = 0; j < MAZE_SIZE; ++j)
+        {
+            maze[i][j] = 0;
+        }
+    }
+    path(0,0);
+
+    while (true){}
+
+
+
+
+
 
 	plot_pixel(randX, randY, RED);
 	
@@ -489,7 +695,7 @@ int main(void)
 // Scaling -- DONE ?
 // Double buffering
 // Better random number generation
-// Build frame.
+// Build border -- DONE.
 // Border waves.
 // Maze generation.
 // Rotation (rotate game 90 deg every X seconds).
