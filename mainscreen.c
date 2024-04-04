@@ -247,6 +247,7 @@ unsigned short start_page[240][512] = {
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h> // Include the header for uint8_t type
 
 #define uint32 unsigned int
 
@@ -302,6 +303,86 @@ void draw_whole_screen(unsigned short sprite[SCREEN_LENGTH][SCREEN_WIDTH])
 		}
 }
 
+#include <stdint.h>
+
+// Function to generate rainbow color based on coordinates
+void generate_rainbow_color(int x, int y, int width, int height, int frame, uint8_t *r, uint8_t *g, uint8_t *b) {
+    // Calculate hue based on coordinates and frame
+    float hue = (360.0 * (x + y) / (width + height)) + frame;
+
+    // Convert hue to RGB color
+    float r_float, g_float, b_float;
+    hsv_to_rgb(hue, 1.0, 1.0, &r_float, &g_float, &b_float);
+
+    // Convert RGB values to 8-bit integers
+    *r = (uint8_t)(r_float * 255);
+    *g = (uint8_t)(g_float * 255);
+    *b = (uint8_t)(b_float * 255);
+}
+
+// Function to convert HSV color to RGB color
+void hsv_to_rgb(float h, float s, float v, float *r, float *g, float *b) {
+    int i;
+    float f, p, q, t;
+    if (s == 0) {
+        // Achromatic (grey)
+        *r = *g = *b = v;
+        return;
+    }
+    h /= 60; // sector 0 to 5
+    i = (int)h;
+    f = h - i; // factorial part of h
+    p = v * (1 - s);
+    q = v * (1 - s * f);
+    t = v * (1 - s * (1 - f));
+    switch (i) {
+        case 0:
+            *r = v;
+            *g = t;
+            *b = p;
+            break;
+        case 1:
+            *r = q;
+            *g = v;
+            *b = p;
+            break;
+        case 2:
+            *r = p;
+            *g = v;
+            *b = t;
+            break;
+        case 3:
+            *r = p;
+            *g = q;
+            *b = v;
+            break;
+        case 4:
+            *r = t;
+            *g = p;
+            *b = v;
+            break;
+        default: // case 5:
+            *r = v;
+            *g = p;
+            *b = q;
+            break;
+    }
+}
+
+
+void draw_rainbow_gradient() {
+    int x, y;
+    for (x = 0; x < 512; x++) {
+        for (y = 0; y < 240; y++) {
+            uint8_t r, g, b;
+            generate_rainbow_color(x, y, 512, 240, 0, &r, &g, &b);
+            uint16_t color = ((uint16_t)r << 11) | ((uint16_t)g << 5) | b;
+            Buffer1.pixels[y][x] = color;
+        }
+    }
+}
+
+
 void fbswap(void)
 {
     vp->bfbp = &Buffer1; // set back buffer
@@ -314,12 +395,14 @@ int main(void)
 {
     vp->fbp = &Buffer1; // set front buffer
 
-
+    int frame =0;
     while (1)
     {
+        frame++;
 		
 	clear_screen(); // Clear the screen
-	draw_whole_screen(start_page);
+    draw_rainbow_gradient(); // Draw the rainbow gradient
+	//draw_whole_screen(start_page);
 	fbswap();
 	
 
