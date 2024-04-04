@@ -369,7 +369,7 @@ void displayHex(int number)
 //     bool LEFT = false;
 // }
 
-#define MAZE_SIZE 20
+#define MAZE_SIZE 10
 
 int maze[MAZE_SIZE][MAZE_SIZE];
 
@@ -552,7 +552,7 @@ int main(void)
     // Clear screen.
     clear_screen();
 
-	srand(time(NULL));
+	srand(2444);
     
 	int randX = rand() % (RANDOM_RANGE + 1);
 	int randY = 0;
@@ -710,6 +710,7 @@ int main(void)
 // Audio
 // Sprite Animation? 
 // Floor animation
+// Random Seeding with Switches?
 
 
 
