@@ -20,6 +20,10 @@
 #define SW_BASE                      0xFF200040
 // 9 - 0 SWITCHES
 
+// 7 Seg Display
+#define ADDR_7SEG1 ((volatile long *) 0xFF200020)
+#define ADDR_7SEG2 ((volatile long *) 0xFF200030)
+
 // Pointers
 volatile int* pLED = (int*) LED_BASE;
 volatile int* pKEY = (int*) KEY_BASE;
@@ -110,6 +114,8 @@ int dirY = 0;
 
 int acceptInput = TRUE;
 int snakeLength = 1;
+
+int score = 0;
 
 struct cell
 {
@@ -279,6 +285,12 @@ bool isReadEmpty()
 
 int main(void)
 {
+
+    *ADDR_7SEG1 = 0x00000006; 
+    *ADDR_7SEG2 = 0;
+
+    while(true) {}
+
     // Wait for v-sync before writing to pixel buffer.
     wait_for_vsync();
 
@@ -304,10 +316,9 @@ int main(void)
 		printf("X: %d   Y: %d \n", headX, headY);
 
 
-        borderBuilder(0, 0, 20, WHITE, 100000);
-        borderBuilder(0, 0, 20, RED, 0);
-
-        while(true);
+        // borderBuilder(0, 0, 20, WHITE, 100000);
+        // borderBuilder(0, 0, 20, RED, 0);
+        // while(true);
 
 
 		// Boundary checks.
@@ -382,6 +393,10 @@ int main(void)
             // Increase snake length.
 			snakeLength++; 			            
 			snake[snakeLength-1].active = TRUE; // Set cell to active.
+            
+            score = snakeLength - 1;
+
+            *pLED = score;
 		}
 
         // Draw food.
