@@ -542,6 +542,28 @@ void path(int currX, int currY)
     return;
 }
 
+void drawMaze()
+{
+    for (int i = 0; i < MAZE_SIZE; ++i)
+    {
+        for (int j = 0; j < MAZE_SIZE; ++j)
+        {
+            maze[i][j] = 0;
+        }
+    }
+	
+	for (int y = 0; y < 20; ++y)
+    {
+        for (int x = 0; x < 20; ++x)
+        {
+            plot_pixel(x * 2, y * 2, RED);
+        }
+    }
+	
+	path(0,0);
+}
+
+
 int main(void)
 {
     // Wait for v-sync before writing to pixel buffer.
@@ -551,90 +573,57 @@ int main(void)
 
     // Clear screen.
     clear_screen();
-
+	
+	// Generate random seed.
 	srand(2444);
-    
+   	
+	// Plot food item.
 	int randX = rand() % (RANDOM_RANGE + 1);
 	int randY = 0;
-    
-    for (int y = 0; y < 20; ++y)
-    {
-        for (int x = 0; x < 20; ++x)
-        {
-            plot_pixel(x * 2, y * 2, RED);
-        }
-    }
-
-    // plot_pixel(5, 0, WHITE);
-    for (int i = 0; i < MAZE_SIZE; ++i)
-    {
-        for (int j = 0; j < MAZE_SIZE; ++j)
-        {
-            maze[i][j] = 0;
-        }
-    }
-    path(0,0);
-
-    while (true){}
-
-
-
-
-
-
 	plot_pixel(randX, randY, RED);
 	
-	// Start with 1 block by default (adjust for debugging).
+	// Start with 1 block snake by default 
+	// (adjust STARTING_LENGTH for debugging).
 	snakeLength = STARTING_LENGTH;
 	for (int i=0; i < snakeLength; ++i){ snake[i].active; }
     
+	// Game loop.
 	while (TRUE)
     {            
+		// Poll for input.
         input();
+		
 		printf("X: %d   Y: %d \n", headX, headY);
 
-
-        // borderBuilder(0, 0, 20, WHITE, 100000);
-        // borderBuilder(0, 0, 20, RED, 0);
-        // while(true);
-
-
 		// Boundary checks.
-		if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) 
-        {
-            dirX = 0;
-        }
-
-		if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT)
-        {
-            dirY = 0;
-        }
-
-
+		if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) { dirX = 0; }
+		if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT){ dirY = 0; }
+		
+		// Move head
 		headX += dirX;
 		headY += dirY;
-
 		snake[0].x = headX;
 		snake[0].y = headY;
 
-        
         // Check for body intersection.
-        // Should i = 2? 
-        for (int i = 2; i < snakeLength; i++) 
-        {     
-            if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
-            {
-                while(true)
-                {
-                    // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
-                }
-            }
-        }
-
 		// Avoid snake from collapsing into itself.
+		
+		// Should i = 2? 
+     //   for (int i = 2; i < snakeLength; i++) 
+       // {     
+      
+		//   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
+           // {
+             //   while(true)
+               // {
+                    // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
+                //}
+            //}
+        //}
+		
+		// Update positions of the rest of snake body.
 		if (dirX != 0 || dirY != 0)
 		{
-			// Update the position of snake body.
 			for (int i = snakeLength - 1; i > 0; --i)
 			{
 				snake[i].x = snake[i-1].x;
@@ -643,50 +632,38 @@ int main(void)
 		}
 
 		// Draw snake
-		for (int i = 0; i < snakeLength; i++)
-		{  
-			boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE); 
-		}
+		for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE); }
 
-
+		// Delay before clearing snake.
 		int duration = DELAY;
 		while(duration > 0) {duration--;}
 
-		// Clear after delay.
-		for (int i = 0; i < snakeLength; i++) 
-		{ 
-			boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR); 
-		}
+		// Clear snake after delay.
+		for (int i = 0; i < snakeLength; i++) { boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR); }
 
 		// Colliding with food.
 		if (headX == randX && headY == randY)
 		{
-			// printf("EATEN\n");
-
-			// randX = rand() % (GAME_WIDTH + 1);
+			
+			// Generate new food position.
 			randX = rand() % (RANDOM_RANGE + 1);
-
 			randY = 1;
             
             // Increase snake length.
 			snakeLength++; 			            
 			snake[snakeLength-1].active = TRUE; // Set cell to active.
-            
+			
+			// Update score.
             score = snakeLength - 1;
-
+			
+			// Display score on HEX displays and LEDs.
             *pLED = score;
-            displayHex(score);
+			displayHex(score);
 		}
 
-        // Draw food.
+        
+		// Draw current food.
         boxBuilder(randX, randY, SCALE, RED); 
-
-		// If body intersects itself
-
-		
-
-			
-		// printf("Length: %d\n", snakeLength);
 	}
 }
 
