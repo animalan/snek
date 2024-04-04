@@ -229,17 +229,29 @@ void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
     }
 }
 
-void outlineBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
+void borderBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
 {  
-    // Draw a (LENGTH x LENGTH) Box.  
+    // Draw a (LENGTH x LENGTH) outline. 
     for (int j = 0; j < LENGTH; ++j)
     {
         for (int k = 0; k < LENGTH; ++k)
         {	
-            plot_pixel(startX * LENGTH + k, startY * LENGTH + j, COLOUR);
+            if ( j == 0 || k == 0 || j == LENGTH - 1 || k == LENGTH - 1)
+            {   
+                plot_pixel(startX * LENGTH + k, startY * LENGTH + j, COLOUR);
+            }
         }
     }
 }
+
+
+// Check if READ FIFO is empty.
+bool isReadEmpty()
+{
+    return ((*(pPS2) & 0xFFFF0000) == 0);
+}
+
+
 
 int main(void)
 {
@@ -258,17 +270,19 @@ int main(void)
 
 	plot_pixel(randX, randY, RED);
 	
-	// snakeLength = 1 by default.
+	// Start with 1 block by default (adjust for debugging).
 	snakeLength = STARTING_LENGTH;
-	
-	for (int i=0; i < snakeLength; ++i)
-	{
-		snake[i].active;
-	}
+	for (int i=0; i < snakeLength; ++i){ snake[i].active; }
     
 	while (TRUE)
-    {
-		input();
+    {            
+        input();
+		printf("X: %d   Y: %d \n", headX, headY);
+   
+        // borderBuilder(0, 0, 10, RED);
+
+        // while(true);
+
 
 		// Boundary checks.
 		if (headX + dirX < 0 || headX + dirX > GAME_WIDTH) 
@@ -281,7 +295,6 @@ int main(void)
             dirY = 0;
         }
 
-		// printf("X: %d   Y: %d \n", headX, headY);
 
 		headX += dirX;
 		headY += dirY;
@@ -291,7 +304,7 @@ int main(void)
 
         
         // Check for body intersection.
-        Should i = 2? 
+        // Should i = 2? 
         for (int i = 2; i < snakeLength; i++) 
         {     
             if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
@@ -359,17 +372,26 @@ int main(void)
 	}
 }
 
-// PS2 Interrupts
+// PS2 Interrupts // in the DE1-SOC docs
 // Maze Generation
-// Scaling
+// Scaling -- DONE ?
 // Double buffering
 // Better random number generation
 // Build frame.
 // Border waves.
 // Maze generation.
-// Rotation.
-// Check if read FIFO is full.
+// Rotation (rotate game 90 deg every X seconds).
+// Check if read FIFO is full. -- DONE. 
 // Boss Mode.
+// Invert mode.
+// Translate board.
+// Platformer
+// Left Shift Back Register for random number generation.
+// LED score counter
+// Settings
+// Audio
+// Sprite Animation? 
+// Floor animation
 
 
 
