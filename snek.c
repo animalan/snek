@@ -21,8 +21,23 @@
 // 9 - 0 SWITCHES
 
 // 7 Seg Display
-#define ADDR_7SEG1 ((volatile long *) 0xFF200020)
-#define ADDR_7SEG2 ((volatile long *) 0xFF200030)
+#define ADDR_7SEG0 ((volatile long *) 0xFF200020)
+#define ADDR_7SEG1 ((volatile long *) 0xFF200030)
+
+
+    #define HEX_ZERO 0b0111111 // 
+    #define HEX_ONE 0b0000110 // 1
+    #define HEX_TWO 0b1011011 // 2
+    #define HEX_THREE 0b1001111 // 3
+    #define HEX_FOUR 0b1100110 // 4
+    #define HEX_FIVE 0b1101101 // 5
+    #define HEX_SIX 0b1111101 // 6
+    #define HEX_SEVEN 0b0000111 // 7
+    #define HEX_EIGHT 0b1111111 // 8
+    #define HEX_NINE 0b1101111 // 9
+    #define HEX_EMPTY 0b0000000 // 9
+
+
 
 // Pointers
 volatile int* pLED = (int*) LED_BASE;
@@ -286,8 +301,23 @@ bool isReadEmpty()
 int main(void)
 {
 
-    *ADDR_7SEG1 = 0x00000006; 
-    *ADDR_7SEG2 = 0;
+
+
+    *ADDR_7SEG0 = 0x00000000;
+    
+    
+    *ADDR_7SEG0 =  HEX_EMPTY << 8 * 4 + HEX_EMPTY << 8 * 3 + HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
+    
+    *ADDR_7SEG1 =  HEX_EMPTY << 8 * 2 + HEX_EMPTY << 8;
+
+
+    //  + HEX_ZERO + << (7 * 2) + HEX_ZERO << 7 + HEX_ZERO ;
+    
+
+
+
+
+    // *ADDR_7SEG2 = 0;
 
     while(true) {}
 
