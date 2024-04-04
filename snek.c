@@ -217,6 +217,16 @@ void plot_pixel(int x, int y, short int line_color)
         *one_pixel_address = line_color;
 }
 
+void plot_pixel_delay(int x, int y, short int line_color, int delay)
+{
+        short int *one_pixel_address;
+        one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1);
+        *one_pixel_address = line_color;
+        int duration =  delay;
+        while(duration > 0) {duration--;}
+}
+
+
 void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
 {  
     // Draw a (LENGTH x LENGTH) Box.  
@@ -229,18 +239,32 @@ void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
     }
 }
 
-void borderBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
+void borderBuilder(int startX, int startY, const int LENGTH, const int COLOUR, const int delay)
 {  
     // Draw a (LENGTH x LENGTH) outline. 
-    for (int j = 0; j < LENGTH; ++j)
+
+    // Top -->
+    for (int i = 0; i < LENGTH; ++i)
     {
-        for (int k = 0; k < LENGTH; ++k)
-        {	
-            if ( j == 0 || k == 0 || j == LENGTH - 1 || k == LENGTH - 1)
-            {   
-                plot_pixel(startX * LENGTH + k, startY * LENGTH + j, COLOUR);
-            }
-        }
+        plot_pixel_delay(startX + i, startY, COLOUR, delay);
+    }
+
+    // Right V
+    for (int i = 0; i < LENGTH; ++i)
+    {
+        plot_pixel_delay(startX + (LENGTH-1), startY + i, COLOUR, delay);
+    }
+
+    // Bottom <--
+    for (int i = 0; i < LENGTH; ++i)
+    {
+        plot_pixel_delay(startX + (LENGTH - 1) - i, startY + (LENGTH - 1), COLOUR, delay);
+    }
+
+    // Left ^
+    for (int i = 0; i < LENGTH; ++i)
+    {
+        plot_pixel_delay(startX, startY + (LENGTH - 1) - i, COLOUR, delay);
     }
 }
 
@@ -278,10 +302,12 @@ int main(void)
     {            
         input();
 		printf("X: %d   Y: %d \n", headX, headY);
-   
-        // borderBuilder(0, 0, 10, RED);
 
-        // while(true);
+
+        borderBuilder(0, 0, 20, WHITE, 100000);
+        borderBuilder(0, 0, 20, RED, 0);
+
+        while(true);
 
 
 		// Boundary checks.
@@ -352,11 +378,9 @@ int main(void)
 			randX = rand() % (RANDOM_RANGE + 1);
 
 			randY = 1;
-
             
-            printf(randX);
-
-			snakeLength++; 			            // Increase snake length.
+            // Increase snake length.
+			snakeLength++; 			            
 			snake[snakeLength-1].active = TRUE; // Set cell to active.
 		}
 
