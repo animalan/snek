@@ -461,7 +461,7 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[6][6
                 }
                 else
                 {
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , snake[j][k]);
+                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j ,snake[LENGTH - 1 - k][j]);
                 }
                 //plot_pixel(startX * LENGTH + k +offset, startY * LENGTH + j , snake[LENGTH - 1 - k][j]);
             }
@@ -495,7 +495,7 @@ void drawFruit (int startX, int startY, const int LENGTH, unsigned int fruit[8][
             {
                 continue;
             }
-            plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, fruit[j][k]);
+            plot_pixel(startX * LENGTH + k, startY * LENGTH + j +offset, fruit[j][k]);
         }
     }
 }
@@ -843,7 +843,7 @@ int main(void)
     // Plot food item.
     int randX = rand() % (RANDOM_RANGE + 1);
     int randY = 0;
-    drawFruit(randX, randY, SCALE+2, fruits[fruitIdx], offsetEven);
+    //drawFruit(randX, randY, SCALE+2, fruits[fruitIdx], offsetEven);
 
     // Start with 1 block snake by default
     // (adjust STARTING_LENGTH for debugging).
@@ -906,7 +906,7 @@ int main(void)
                 snake[i].dirY = snake[i - 1].dirY;
             }
         }
-
+ drawFruit(randX, randY, SCALE+2, fruits[fruitIdx],offsetEven);
         // Draw snake
         // for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE); }
         for (int i = 0; i < snakeLength; i++)
@@ -961,8 +961,8 @@ int main(void)
 
         // Draw current food.
         // boxBuilder(randX, randY, SCALE, RED);
-        drawFruit(randX, randY, SCALE+2, fruits[fruitIdx], offsetEven*2);
-       boxBuilder(randX, randY+offsetEven*2, SCALE+2, CLEAR);
+       
+       boxBuilder(randX, randY+offsetEven, SCALE+2, CLEAR);
        
             offsetOdd = !offsetOdd;
             offsetEven = !offsetEven;
