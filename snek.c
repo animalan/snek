@@ -102,6 +102,19 @@ volatile int *pPS2 = (int *)PS2_BASE;
 #define STARTING_LENGTH 5
 #define SCALE 6
 #define RANDOM_RANGE 5
+	
+// Center point
+#define CENTER_X  (int) WIDTH / 2
+#define CENTER_Y  (int) HEIGHT / 2
+
+// Offset center point for drawing border.
+// Game border can be completely defined by two points
+// (TOP_LEFT_X, TOP_LEFT_Y) (BOTTOM_RIGHT_X, bottomRightY)
+#define TOP_LEFT_X    (int) CENTER_X - (GAME_WIDTH / 2)
+#define TOP_LEFT_Y    (int) CENTER_Y - (GAME_HEIGHT / 2)
+        
+#define BOTTOM_RIGHT_X  (int) CENTER_X + (GAME_WIDTH / 2)
+#define BOTTOM_RIGHT_Y  (int) CENTER_Y + (GAME_HEIGHT / 2)
 
 int headX = 0;
 int headY = 0;
@@ -839,7 +852,10 @@ int main(void)
 
     // Generate random seed.
     srand(2444);
-
+	
+    // Draw game border
+    borderBuilder(TOP_LEFT_X, TOP_LEFT_Y, GAME_WIDTH, RED, 0);
+	
     // Plot food item.
     int randX = rand() % (RANDOM_RANGE + 1);
     int randY = 0;
