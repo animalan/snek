@@ -211,7 +211,7 @@ unsigned int fruits[5][9][9] = {
 };
 
 unsigned int fruit_color[5] = {
-     0xFBE0, 0xE8E4,  0xE8E4, 0xF720, 0x9806
+     0xFBE0, 0x1C27,  0xE8E4, 0xF720, 0x9806
 };
 // int snake[MAX_SNAKE_LENGTH] = {0};
 /////////////////////////////////////// SPRITES
