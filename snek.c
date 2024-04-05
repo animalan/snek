@@ -62,6 +62,7 @@ volatile int *pSW = (int *)SW_BASE;
 
 #define BLACK 0
 #define CLEAR BLACK
+#define SHADING_OFFSET 10305
 
 #define SECOND 10000000
 
@@ -84,6 +85,7 @@ void delay(int duration);
 #define RIGHT_KEY 0x74
 #define UP_KEY 0x75
 #define BREAK 0xF0
+
 
 volatile int *pPS2 = (int *)PS2_BASE;
 
@@ -382,6 +384,9 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 {
                     plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color);
                 }
+                else if (snake[LENGTH - 1 - j][LENGTH - 1 - k] == 0xC0A3){
+                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color-SHADING_OFFSET);
+                }
                 else
                 {
                     plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, snake[LENGTH - 1 - j][LENGTH - 1 - k]);
@@ -404,6 +409,9 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 if (snake[j][k] ==  0xE8E4)
                 {
                     plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color);
+                }
+                else if (snake[j][k] == 0xC0A3){
+                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color-SHADING_OFFSET);
                 }
                 else
                 {
@@ -428,6 +436,9 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 {
                     plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color);
                 }
+                else if (snake[k][LENGTH - 1 - j] == 0xC0A3){
+                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color-SHADING_OFFSET);
+                }
                 else
                 {
                     plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , snake[k][LENGTH - 1 - j]);
@@ -450,6 +461,9 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 if (snake[LENGTH - 1 - k][j]==  0xE8E4)
                 {
                     plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color);
+                }
+                else if (snake[LENGTH - 1 - k][j] == 0xC0A3){
+                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color-SHADING_OFFSET);
                 }
                 else
                 {
