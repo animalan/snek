@@ -67,7 +67,11 @@ volatile int *pSW = (int *)SW_BASE;
 #define SECOND 10000000
 
 int pixel_buffer_start; // global variable
-volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUFFER;
+volatile int *pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
+
+short int Buffer1[HEIGHT][512]; // Front buffer 240 rows, 512 (320 + padding) columns
+short int Buffer2[HEIGHT][512]; // Back buffer
+
 
 // Prototypes
 void wait_for_vsync();
@@ -127,6 +131,7 @@ int dirY = 0;
 
 int acceptInput = TRUE;
 int snakeLength = 1;
+
 int frame = 0;
 bool offsetEven = true;
 bool offsetOdd = false;
@@ -644,10 +649,7 @@ void wait_for_vsync()
     *pixel_ctrl_ptr = 1;
     int status = *(pixel_ctrl_ptr + 3);
 
-    while ((status & 0x01) != 0)
-    {
-        status = *(pixel_ctrl_ptr + 3);
-    }
+    while ((status & 0x01) != 0){ status = *(pixel_ctrl_ptr + 3); }
 }
 
 void clear_screen(const int COLOUR)
@@ -1167,8 +1169,7 @@ void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR,
 }
 
 
-
-void twrite(char text[], int x, int y, int size, int COLOUR, int typeDuration)
+void twrite(char* text, int x, int y, int size, int COLOUR, int typeDuration)
 {
 	for (int i = 0; i < strlen(text) ; i++)
 	{
@@ -1177,7 +1178,6 @@ void twrite(char text[], int x, int y, int size, int COLOUR, int typeDuration)
 		{
 			for (int k = 0; k < 3; ++k)
 			{
-
                 if ('a' <= text[i] && text[i] <= 'z')
                 {
                     if (letter[text[i] - 'a'][j][k] == 1)
@@ -1209,34 +1209,33 @@ void twrite(char text[], int x, int y, int size, int COLOUR, int typeDuration)
 
 int main(void)
 {
-    // Wait for v-sync before writing to pixel buffer.
+
     animationRadius = sqrt((240 * 240) + (240 * 240)) ;
     frame ++;
 
-	wait_for_vsync();
-
-    pixel_buffer_start = *pixel_ctrl_ptr;
-
-    // Clear screen.
+    // Clear buffers.
+    // Place front buffer at the back, wait for swap.
+    *(pixel_ctrl_ptr + 1) = (int) &Buffer1;
+    wait_for_vsync();
+    // Now clear both buffers.
+	pixel_buffer_start = *pixel_ctrl_ptr;
+    clear_screen(BLACK);
+    // Place back buffer at the back.
+	*(pixel_ctrl_ptr + 1) = (int) &Buffer2;
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1);
     clear_screen(BLACK);
 
     // Generate random seed.
     srand(2444);
 
-	twrite("0123456789", 0, 0, 4, WHITE, SECOND/100);
-	// for (int d = 0; d < SECOND/10; ++d){}
-	twrite("0123456789", 25, 25, 1, RED, SECOND/100);
+    // Init food.
+    bool foodFound = true;
+    int foodX = 0;
+    int foodY = 0;
 
-
-	while(true){}
-
-    // Draw game border
-    borderBuilder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
-
-    // Plot food item.
-    int randX = rand() % (RANDOM_RANGE + 1);
-    int randY = 0;
-    drawFruit(randX, randY, SCALE, fruits[fruitIdx], offsetEven);
+    // Store last two previous frame information.
+    struct cell prev_snake     [MAX_SNAKE_LENGTH];
+    struct cell prev_snake_two [MAX_SNAKE_LENGTH];
 
     // Start with 1 block snake by default
     // (adjust STARTING_LENGTH for debugging).
@@ -1249,13 +1248,61 @@ int main(void)
     // Game loop.
     while (TRUE)
     {
-        // Center Mark
+
+        // Store
+        // Clear
+        // Update / Draw
+
+        ///////////////////////////////////////////////////// STORE
+        // Store last two frames for double buffering.
+		for (int i = 0; i < snakeLength; i++)
+		{
+            // Prev Frame 2 <-- Prev Frame 1
+            prev_snake_two[i].x      = prev_snake[i].x;
+            prev_snake_two[i].y      = prev_snake[i].y;
+            prev_snake_two[i].active = prev_snake[i].active;
+            prev_snake_two[i].dirX   = prev_snake[i].dirX;
+            prev_snake_two[i].dirY   = prev_snake[i].dirY;
+
+            // Prev Frame 1 <-- Current Frame
+            prev_snake[i].x      = snake[i].x;
+            prev_snake[i].y      = snake[i].y;
+            prev_snake[i].active = snake[i].active;
+            prev_snake[i].dirX   = snake[i].dirX;
+            prev_snake[i].dirY   = snake[i].dirY;
+		}
+        ///////////////////////////////////////////////////// STORE
+
+        ///////////////////////////////////////////////////// CLEAR
+        // Clear current frame (information from penultimate frame)
+        for (int i = 0; i < snakeLength; i++)
+        {
+            boxBuilder(prev_snake_two[i].x, prev_snake_two[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
+        }
+        ///////////////////////////////////////////////////// CLEAR
+
+        // Draw Center Mark
         plot_pixel(CENTER_X, CENTER_Y, WHITE);
+
+        // Draw game border.
+        borderBuilder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
+
+        // Plot food item.
+        if (foodFound)
+        {
+            foodFound = false;
+            // Generate new food position.
+            foodX = rand() % (RANDOM_RANGE + 1);
+            foodY = 0;
+            // Generate new food.
+            fruitIdx = rand() % 5;
+        }
+        // Draw food.
+        drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
 
         // Poll for input.
         input();
-
-        printf("X: %d   Y: %d \n", headX, headY);
+        // printf("X: %d   Y: %d \n", headX, headY);
 
         // Boundary checks.
         if (headX + dirX < 0 || headX + dirX > GAME_WIDTH){ dirX = 0;}
@@ -1264,8 +1311,10 @@ int main(void)
         // Move head
         headX += dirX;
         headY += dirY;
-        snake[0].x = headX;
-        snake[0].y = headY;
+
+        // Store head position and direction.
+        snake[0].x    = headX;
+        snake[0].y    = headY;
         snake[0].dirX = dirX;
         snake[0].dirY = dirY;
 
@@ -1290,53 +1339,36 @@ int main(void)
         {
             for (int i = snakeLength - 1; i > 0; --i)
             {
-                snake[i].x = snake[i - 1].x;
-                snake[i].y = snake[i - 1].y;
-                snake[i].dirX = snake[i - 1].dirX;
+                snake[i].x    = snake[i - 1].x;    // Position
+                snake[i].y    = snake[i - 1].y;
+
+                snake[i].dirX = snake[i - 1].dirX; // Direction
                 snake[i].dirY = snake[i - 1].dirY;
             }
         }
-        drawFruit(randX, randY, SCALE, fruits[fruitIdx],offsetEven);
+
         // Draw snake
         for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE, TOP_LEFT_X, TOP_LEFT_Y); }
 
-
-        // DRAW SNAKE SPRITES
-        // for (int i = 0; i < snakeLength; i++)
-        // {
-        //     if (i == 0 || i == 1)
-        //     {
-        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
-
-        //     }
-        //     else if (i%2 ==0){
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
-        //     }
-        //     else{
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
-        //     }
-
-        // }
-
-
-
-
          // Colliding with food.
-        if (headX == randX && headY == randY)
+        if (headX == foodX && headY == foodY)
         {
             showAnimation = true;
-            animationX = headX;
-            animationY = headY;
-            //drawAnimationSquare(headX * SCALE, headY * SCALE, animationRadius, RED);
-            // Generate new food position.
-            randX = rand() % (RANDOM_RANGE + 1);
-            randY = 1;
-            fruitIdx = rand() % 5;
+
+            foodFound = true;
+
+            // animationX = headX;
+            // animationY = headY;
 
             // Increase snake length.
             snakeLength++;
             snake[snakeLength - 1].active = TRUE; // Set cell to active.
             snake[snakeLength - 1].colour = fruit_color[fruitIdx];
+
+            // Clear score text.
+            char* text;
+            sprintf(text, "%d", score);
+			twrite(text, 0, 0, 3, BLACK, 0);
 
             // Update score.
             score = snakeLength - 1;
@@ -1344,51 +1376,44 @@ int main(void)
             // Display score on HEX displays and LEDs.
             *pLED = score;
             displayHex(score);
+
+			sprintf(text, "%d", score);
+			twrite(text, 0, 0, 3, WHITE, 0);
         }
-        // Delay before clearing snake.
-        int duration = DELAY;
-        while (duration > 0) { duration--; }
 
 
-
-        //  for (int i = 0; i < snakeLength; i++)
+        // // Clear snake.
+        // for (int i = 0; i < snakeLength; i++)
         // {
-        //     if (i == 0 || i == 1)
-        //     {
-        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
-        //     }
-        //     else if (i%2 ==0){
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
-        //     }
-        //     else{
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
-        //     }
-
+        //     boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
         // }
 
-        // Clear snake after delay.
-       for (int i = 0; i < snakeLength; i++)
-       {
-           boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
-       }
+        // Clear current food.
+        clearFruit(foodX, foodY+offsetEven, SCALE, CLEAR);
+        offsetOdd  = !offsetOdd;
+        offsetEven = !offsetEven;
 
 
+        // Delay.
+        // for (int i = 0; i < 1000000; ++i);
 
-
-
-     //  clearAnimationSquare(headX * SCALE, headY * SCALE, animationRadius);
-
-        // Draw current food.
-        clearFruit(randX, randY+offsetEven, SCALE, CLEAR);
-
-
-
-            offsetOdd = !offsetOdd;
-            offsetEven = !offsetEven;
-
+        // Wait for buffer swap to set write buffer.
+        wait_for_vsync();
+		pixel_buffer_start = *(pixel_ctrl_ptr + 1);
     }
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 // PS2 Interrupts // in the DE1-SOC docs
 // Maze Generation
@@ -1419,3 +1444,22 @@ int main(void)
 // {
 // *(PS2_ptr) = 0xF4;
 // }
+
+
+
+       // DRAW SNAKE SPRITES
+        // for (int i = 0; i < snakeLength; i++)
+        // {
+        //     if (i == 0 || i == 1)
+        //     {
+        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
+
+        //     }
+        //     else if (i%2 ==0){
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
+        //     }
+        //     else{
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
+        //     }
+
+        // }
