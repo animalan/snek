@@ -93,6 +93,7 @@ volatile int *pPS2 = (int *)PS2_BASE;
 
 ////////////////////////////////////////// GAME CONSTANTS
 
+#define SECOND 50000000
 #define TRUE 1
 #define FALSE 0
 
@@ -104,7 +105,7 @@ volatile int *pPS2 = (int *)PS2_BASE;
 #define STARTING_LENGTH 2
 #define SCALE 9
 #define RANDOM_RANGE 5
-	
+
 // Center point
 #define CENTER_X  (int) WIDTH / 2
 #define CENTER_Y  (int) HEIGHT / 2
@@ -114,7 +115,7 @@ volatile int *pPS2 = (int *)PS2_BASE;
 // (TOP_LEFT_X, TOP_LEFT_Y) (BOTTOM_RIGHT_X, bottomRightY)
 #define TOP_LEFT_X    (int) (CENTER_X - (GAME_WIDTH / 2) * SCALE)
 #define TOP_LEFT_Y    (int) (CENTER_Y - (GAME_HEIGHT / 2) * SCALE)
-        
+
 #define BOTTOM_RIGHT_X  (int) (CENTER_X + (GAME_WIDTH / 2) * SCALE)
 #define BOTTOM_RIGHT_Y  (int) (CENTER_Y + (GAME_HEIGHT / 2) * SCALE)
 
@@ -172,7 +173,7 @@ unsigned int fruits[5][9][9] = {
     {0x0262, 0x2589, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262},
     {0x0262, 0x0262, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x0262},
     {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-    
+
 },
 {
     {0x0262, 0x0262, 0x1345, 0x1C27, 0x1C27, 0x1C27, 0x0262, 0x0262, 0x0262},
@@ -239,212 +240,331 @@ unsigned int snake_head_red[9][9] = {
     {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, },
 };
 
+
 //////////////////////////////////////////
-char letter[26][5][3] = 
+char number[10][5][3] =
 {
 
+//0
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//1
+{
+    {1, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0},
+    {1, 1, 1}
+},
+//2
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 1, 1}
+},
+//3
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1}
+},
+//4
+{
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+},
+//5
+{
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1}
+},
+//6
+{
+    {1, 0, 0},
+    {1, 0, 0},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//7
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+},
+//8
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//9
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+}
+
+
+};
+
+//////////////////////////////////////////
+char letter[26][5][3] =
+{
 
 //a
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 0, 1}
 },
+
 //b
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 0},
+    {1, 1, 0},
+    {1, 0, 1},
+    {1, 1, 1}
 },
+
 //c
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 0, 0},
+    {1, 1, 1}
 },
+
 //d
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 0}
 },
+
 //e
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 1, 0},
+    {1, 0, 0},
+    {1, 1, 1}
 },
+
 //f
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x00, 0x00}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 1, 0},
+    {1, 0, 0},
+    {1, 0, 0}
 },
+
 //g
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 0, 1},
+    {1, 1, 1}
 },
+
 //h
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x01}
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 0, 1}
 },
+
 //i
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {0, 1, 0},
+    {0, 1, 0},
+    {1, 1, 1}
 },
-//j	
+
+//j
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x01, 0x00}
+    {0, 0, 0},
+    {1, 1, 1},
+    {0, 1, 0},
+    {0, 1, 0},
+    {1, 1, 0}
 },
-//k	
+
+//k
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x00, 0x01}
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 1, 0},
+    {1, 0, 1},
+    {1, 0, 1}
 },
+
 //l
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 0, 0},
+    {1, 0, 0},
+    {1, 0, 0},
+    {1, 1, 1}
 },
+
 //m
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 0, 1}
 },
+
 //n
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01}
-},
-//
-{
-    {0x00, 0x00, 0x00},
-    {0x00, 0x01, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x00}
+    {0, 0, 0},
+    {1, 1, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 0, 1}
 },
 
+// o
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x00, 0x00}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x00, 0x01}
+    {0, 0, 0},
+    {0, 1, 1},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 0}
 },
 
+// -
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x00, 0x01, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x00}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x00, 0x01, 0x00},
-    {0x00, 0x01, 0x00}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 0, 0}
 },
 
+// q
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x01, 0x01}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x01, 0x01}
-},
-{
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x00, 0x01, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x00, 0x01}
+    {0, 0, 0},
+    {0, 1, 0},
+    {1, 0, 1},
+    {1, 1, 0},
+    {0, 1, 1}
 },
 
+// r
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x00, 0x01},
-    {0x01, 0x01, 0x01},
-    {0x01, 0x00, 0x00},
-    {0x01, 0x01, 0x01}
+    {0, 0, 0},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 0},
+    {1, 0, 1}
 },
 
+// s
 {
-    {0x00, 0x00, 0x00},
-    {0x01, 0x01, 0x01},
-    {0x00, 0x00, 0x01},
-    {0x01, 0x01, 0x00},
-    {0x00, 0x01, 0x01}
+    {0, 0, 0},
+    {0, 1, 1},
+    {1, 0, 0},
+    {0, 0, 1},
+    {1, 1, 0}
+},
+
+// t
+{
+    {0, 0, 0},
+    {1, 1, 1},
+    {0, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0}
+},
+
+// u
+{
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 1, 1}
+},
+
+// v
+{
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 1, 0}
+},
+
+// w
+{
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 1, 1}
+},
+
+// x
+{
+    {0, 0, 0},
+    {1, 0, 1},
+    {0, 1, 0},
+    {1, 0, 1},
+    {1, 0, 1}
+},
+
+// y
+{
+    {0, 0, 0},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1}
+},
+
+// z
+{
+    {0, 0, 0},
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 0, 0},
+    {1, 1, 1}
 }
 
 };
@@ -472,7 +592,7 @@ void input()
     else if (byte3 == LEFT_KEY && acceptInput)
     {
         acceptInput = FALSE;
-       
+
 
         // printf("LEFT KEY\n");
 
@@ -482,7 +602,7 @@ void input()
     else if (byte3 == RIGHT_KEY && acceptInput)
     {
         acceptInput = FALSE;
-       
+
 
         // printf("RIGHT KEY\n");
 
@@ -492,7 +612,7 @@ void input()
     else if (byte3 == UP_KEY && acceptInput)
     {
         acceptInput = FALSE;
-        
+
 
         // printf("UP KEY\n");
 
@@ -502,7 +622,7 @@ void input()
     else if (byte3 == DOWN_KEY && acceptInput)
     {
         acceptInput = FALSE;
-       
+
 
         // printf("DOWN KEY\n");
 
@@ -695,7 +815,7 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, snake[j][k]);
             }
         }
-    
+
     }
 }
 
@@ -1048,32 +1168,42 @@ void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR,
 
 
 
-void cwrite(char text[], int x, int y, int size, int typeDuration)
+void twrite(char text[], int x, int y, int size, int COLOUR, int typeDuration)
 {
-	for (int i = 0; i < strlen(text) ; i++) 
+	for (int i = 0; i < strlen(text) ; i++)
 	{
-	
+
 		for (int j = 0; j < 5; ++j)
 		{
 			for (int k = 0; k < 3; ++k)
 			{
-				if (letter[text[i] - 'a'][j][k] == 1)
-				{
-					boxBuilder(x + k, y + j, size, WHITE, 0, 0);
 
-					if(typeDuration > 0)
-					{
-						int duration = DELAY;
-						while (duration > 0) { duration--; }
-					}
-					
-					
-				}
+                if ('a' <= text[i] && text[i] <= 'z')
+                {
+                    if (letter[text[i] - 'a'][j][k] == 1)
+                    {
+                        boxBuilder(x + k, y + j, size, COLOUR, 0, 0);
+                    }
+                }
+                else if ('0' <= text[i] && text[i] <= '9')
+                {
+                    if (number[text[i] - '0'][j][k] == 1)
+                    {
+                        boxBuilder(x + k, y + j, size, COLOUR, 0, 0);
+                    }
+                }
+
 			}
 		}
-		
+
+        if(typeDuration > 0)
+        {
+            int duration = typeDuration;
+            while (duration > 0) { duration--; }
+        }
+
 		// Update spacing
-		x += (size);
+		x += 4;
 	}
 }
 
@@ -1082,22 +1212,24 @@ int main(void)
     // Wait for v-sync before writing to pixel buffer.
     animationRadius = sqrt((240 * 240) + (240 * 240)) ;
     frame ++;
-    
+
 	wait_for_vsync();
 
     pixel_buffer_start = *pixel_ctrl_ptr;
 
     // Clear screen.
-    clear_screen(RED);
-    
+    clear_screen(BLACK);
+
     // Generate random seed.
     srand(2444);
-	
-	cwrite("abf", 0, 0, 4, 0);
-		
-	
+
+	twrite("0123456789", 0, 0, 4, WHITE, SECOND/100);
+	// for (int d = 0; d < SECOND/10; ++d){}
+	twrite("0123456789", 25, 25, 1, RED, SECOND/100);
+
+
 	while(true){}
-	
+
     // Draw game border
     borderBuilder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
 
@@ -1167,8 +1299,8 @@ int main(void)
         drawFruit(randX, randY, SCALE, fruits[fruitIdx],offsetEven);
         // Draw snake
         for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE, TOP_LEFT_X, TOP_LEFT_Y); }
-        
-        
+
+
         // DRAW SNAKE SPRITES
         // for (int i = 0; i < snakeLength; i++)
         // {
@@ -1183,15 +1315,15 @@ int main(void)
         //     else{
         //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
         //     }
-           
+
         // }
 
-           
-        
+
+
 
          // Colliding with food.
         if (headX == randX && headY == randY)
-        {   
+        {
             showAnimation = true;
             animationX = headX;
             animationY = headY;
@@ -1231,7 +1363,7 @@ int main(void)
         //     else{
         //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
         //     }
-           
+
         // }
 
         // Clear snake after delay.
@@ -1240,20 +1372,20 @@ int main(void)
            boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
        }
 
-     
-      
 
-       
+
+
+
      //  clearAnimationSquare(headX * SCALE, headY * SCALE, animationRadius);
 
         // Draw current food.
         clearFruit(randX, randY+offsetEven, SCALE, CLEAR);
-       
-      
-       
+
+
+
             offsetOdd = !offsetOdd;
             offsetEven = !offsetEven;
-     
+
     }
 
 }
