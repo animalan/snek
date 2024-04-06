@@ -1048,18 +1048,33 @@ void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR,
 
 
 
-void cwrite(const char ch, int x, int y)
+void cwrite(char text[], int x, int y, int size, int typeDuration)
 {
-    for (int j = 0; j < 5; ++j)
-    {
-        for (int k = 0; k < 3; ++k)
+	for (int i = 0; i < strlen(text) ; i++) 
+	{
+	
+		for (int j = 0; j < 5; ++j)
 		{
-			if (letter[ch - 'a'][j][k] == 1)
+			for (int k = 0; k < 3; ++k)
 			{
-				boxBuilder(x + k, y + j, 4, WHITE, 0, 0);			
+				if (letter[text[i] - 'a'][j][k] == 1)
+				{
+					boxBuilder(x + k, y + j, size, WHITE, 0, 0);
+
+					if(typeDuration > 0)
+					{
+						int duration = DELAY;
+						while (duration > 0) { duration--; }
+					}
+					
+					
+				}
 			}
 		}
-    }
+		
+		// Update spacing
+		x += (size);
+	}
 }
 
 int main(void)
@@ -1078,23 +1093,8 @@ int main(void)
     // Generate random seed.
     srand(2444);
 	
-	int xNum = 0;
-	cwrite('m', xNum, 0);
-	xNum+=4;
-	cwrite('a', xNum, 0);
-	xNum+=4;
-	cwrite('i', xNum, 0);
-	xNum+=4;
-	cwrite('n', xNum, 0);
-	xNum+=4;
-	cwrite('m', xNum, 0);
-	xNum+=4;
-	cwrite('e', xNum, 0);
-	xNum+=4;
-	cwrite('n', xNum, 0);
-	xNum+=4;
-	cwrite('u', xNum, 0);
-	xNum+=4;
+	cwrite("abf", 0, 0, 4, 0);
+		
 	
 	while(true){}
 	
