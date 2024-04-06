@@ -96,12 +96,12 @@ volatile int *pPS2 = (int *)PS2_BASE;
 #define TRUE 1
 #define FALSE 0
 
-#define GAME_WIDTH 50
+#define GAME_WIDTH 20
 #define GAME_HEIGHT GAME_WIDTH
 #define DELAY 900000
 
 #define MAX_SNAKE_LENGTH GAME_WIDTH *GAME_WIDTH
-#define STARTING_LENGTH 5
+#define STARTING_LENGTH 2
 #define SCALE 9
 #define RANDOM_RANGE 5
 	
@@ -112,16 +112,16 @@ volatile int *pPS2 = (int *)PS2_BASE;
 // Offset center point for drawing border.
 // Game border can be completely defined by two points
 // (TOP_LEFT_X, TOP_LEFT_Y) (BOTTOM_RIGHT_X, bottomRightY)
-#define TOP_LEFT_X    (int) CENTER_X - (GAME_WIDTH / 2)
-#define TOP_LEFT_Y    (int) CENTER_Y - (GAME_HEIGHT / 2)
+#define TOP_LEFT_X    (int) (CENTER_X - (GAME_WIDTH / 2) * SCALE)
+#define TOP_LEFT_Y    (int) (CENTER_Y - (GAME_HEIGHT / 2) * SCALE)
         
-#define BOTTOM_RIGHT_X  (int) CENTER_X + (GAME_WIDTH / 2)
-#define BOTTOM_RIGHT_Y  (int) CENTER_Y + (GAME_HEIGHT / 2)
+#define BOTTOM_RIGHT_X  (int) (CENTER_X + (GAME_WIDTH / 2) * SCALE)
+#define BOTTOM_RIGHT_Y  (int) (CENTER_Y + (GAME_HEIGHT / 2) * SCALE)
 
 int headX = 0;
 int headY = 0;
 
-int dirX = -1;
+int dirX = 0;
 int dirY = 0;
 
 int acceptInput = TRUE;
@@ -354,14 +354,14 @@ void plot_pixel_delay(int x, int y, short int line_color, int delay)
     }
 }
 
-void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR)
+void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y)
 {
     // Draw a (LENGTH x LENGTH) Box.
     for (int j = 0; j < LENGTH; ++j)
     {
         for (int k = 0; k < LENGTH; ++k)
         {
-            plot_pixel(startX * LENGTH + k, startY * LENGTH + j, COLOUR);
+            plot_pixel(startX * LENGTH + k + OFFSET_X, startY * LENGTH + j + OFFSET_Y, COLOUR);
         }
     }
 }
@@ -382,14 +382,14 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 }
                 if (snake[LENGTH - 1 - j][LENGTH - 1 - k] ==  0xE8E4)
                 {
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, color);
                 }
                 else if (snake[LENGTH - 1 - j][LENGTH - 1 - k] == 0xC0A3){
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color-SHADING_OFFSET);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, color-SHADING_OFFSET);
                 }
                 else
                 {
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, snake[LENGTH - 1 - j][LENGTH - 1 - k]);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, snake[LENGTH - 1 - j][LENGTH - 1 - k]);
                 }
               //  plot_pixel(startX * LENGTH + k , startY * LENGTH + j + offset, snake[LENGTH - 1 - j][LENGTH - 1 - k]);
             }
@@ -408,14 +408,14 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 }
                 if (snake[j][k] ==  0xE8E4)
                 {
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, color);
                 }
                 else if (snake[j][k] == 0xC0A3){
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, color-SHADING_OFFSET);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, color-SHADING_OFFSET);
                 }
                 else
                 {
-                    plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset, snake[j][k]);
+                    plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + offset + TOP_LEFT_Y, snake[j][k]);
                 }
                 //plot_pixel(startX * LENGTH + k, startY * LENGTH + j + offset,  snake[j][k]);
             }
@@ -434,14 +434,14 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 }
                 if (snake[k][LENGTH - 1 - j] ==  0xE8E4)
                 {
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, color);
                 }
                 else if (snake[k][LENGTH - 1 - j] == 0xC0A3){
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color-SHADING_OFFSET);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, color-SHADING_OFFSET);
                 }
                 else
                 {
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , snake[k][LENGTH - 1 - j]);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, snake[k][LENGTH - 1 - j]);
                 }
                 //plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , snake[k][LENGTH - 1 - j]);
             }
@@ -460,14 +460,14 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 }
                 if (snake[LENGTH - 1 - k][j]==  0xE8E4)
                 {
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, color);
                 }
                 else if (snake[LENGTH - 1 - k][j] == 0xC0A3){
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j , color-SHADING_OFFSET);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, color-SHADING_OFFSET);
                 }
                 else
                 {
-                    plot_pixel(startX * LENGTH + k + offset, startY * LENGTH + j ,snake[LENGTH - 1 - k][j]);
+                    plot_pixel(startX * LENGTH + k + offset + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, snake[LENGTH - 1 - k][j]);
                 }
                 //plot_pixel(startX * LENGTH + k +offset, startY * LENGTH + j , snake[LENGTH - 1 - k][j]);
             }
@@ -483,7 +483,7 @@ void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9
                 {
                     continue;
                 }
-                plot_pixel(startX * LENGTH + k, startY * LENGTH + j , snake[j][k]);
+                plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, snake[j][k]);
             }
         }
     
@@ -501,7 +501,7 @@ void drawFruit (int startX, int startY, const int LENGTH, unsigned int fruit[9][
             {
                 continue;
             }
-            plot_pixel(startX * LENGTH + k, startY * LENGTH + j +offset, fruit[j][k]);
+            plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j +offset + TOP_LEFT_Y, fruit[j][k]);
         }
     }
 }
@@ -513,7 +513,7 @@ void clearFruit(int startX, int startY, const int LENGTH, int color)
     {
         for (int k = 0; k < LENGTH; ++k)
         {
-            plot_pixel(startX * LENGTH + k, startY * LENGTH + j, color);
+            plot_pixel(startX * LENGTH + k + TOP_LEFT_X, startY * LENGTH + j + TOP_LEFT_Y, color);
         }
     }
 }
@@ -666,31 +666,6 @@ int dir[4][2] =
         {-1, 0}  // West
 };
 
-// if (!maze[currY][currX].UP)
-// {
-//     newX = currX;
-//     newY = currY + 1;
-// }
-// else if (!maze[currY][currX].DOWN)
-// {
-//     newX = currX;
-//     newY = currY - 1;
-// }
-// else if (!maze[currY][currX].RIGHT)
-// {
-//     newX = currX + 1;
-//     newY = currY;
-// }
-// else if (!maze[currY][currX].LEFT)
-// {
-//     newX = currX - 1;
-//     newY = currY;
-// }
-// else
-// {
-//     return;
-// }
-
 const int UP = 0;
 const int RIGHT = 1;
 const int DOWN = 2;
@@ -785,33 +760,6 @@ void path(int currX, int currY)
             // Current cell has been visited.
             maze[currY][currX] = 1;
 
-            // // Set ith bit to 1.
-            // maze[currY][currX] |= (1u << i);
-
-            // if (i == UP)
-            // {
-            //     maze[newY][newX] |= (1u << DOWN);
-            // }
-            // else if (i == DOWN)
-            // {
-            //     maze[newY][newX] |= (1u << DOWN);
-            // }
-            // else if (i == RIGHT)
-            // {
-            //     maze[newY][newX] |= (1u << LEFT);
-
-            // }
-            // else if (i == LEFT)
-            // {
-            //     maze[newY][newX] |= (1u << RIGHT);
-            // }
-            // plot_pixel(newX * 1, newY * 1, WHITE);
-
-            // for (int x = currX; x != newX * 2; x+= dir[randDir][0])
-            // {
-            //     plot_pixel(x, newY, WHITE);
-            // }
-
             draw_line(currX * 2, currY * 2, newX * 2, newY * 2, WHITE);
 
             // plot_pixel(newX * 2, newY * 2, WHITE);
@@ -889,21 +837,6 @@ void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR,
     }
 }
 
-
-// void clearAnimationSquare(int x, int y, int radius)
-// {
-//     for (int i = 0; i <  radius; ++i)
-//     {
-//         for (int j = 0; j < radius; ++j)
-//         {
-//             if (x+i < 240 && y+j < 240)
-//             {
-              
-//             }
-//         }
-//     }
-// }
-
 int main(void)
 {
     // Wait for v-sync before writing to pixel buffer.
@@ -915,13 +848,13 @@ int main(void)
 
     // Clear screen.
     clear_screen();
-
+    
     // Generate random seed.
     srand(2444);
 	
     // Draw game border
-    borderBuilder(TOP_LEFT_X, TOP_LEFT_Y, GAME_WIDTH, RED, 0);
-	
+    borderBuilder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
+
     // Plot food item.
     int randX = rand() % (RANDOM_RANGE + 1);
     int randY = 0;
@@ -938,20 +871,17 @@ int main(void)
     // Game loop.
     while (TRUE)
     {
+        // Center Mark
+        plot_pixel(CENTER_X, CENTER_Y, WHITE);
+
         // Poll for input.
         input();
 
         printf("X: %d   Y: %d \n", headX, headY);
 
         // Boundary checks.
-        if (headX + dirX < 0 || headX + dirX > GAME_WIDTH)
-        {
-            dirX = 0;
-        }
-        if (headY + dirY < 0 || headY + dirY > GAME_HEIGHT)
-        {
-            dirY = 0;
-        }
+        if (headX + dirX < 0 || headX + dirX > GAME_WIDTH){ dirX = 0;}
+        if (headY + dirY < 0 || headY + dirY > GAME_WIDTH){ dirY = 0;}
 
         // Move head
         headX += dirX;
@@ -990,30 +920,26 @@ int main(void)
         }
         drawFruit(randX, randY, SCALE, fruits[fruitIdx],offsetEven);
         // Draw snake
-        // for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE); }
-        for (int i = 0; i < snakeLength; i++)
-        {
-            if (i == 0 || i == 1)
-            {
-                drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
-            }
-            else if (i%2 ==0){
-                drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
-            }
-            else{
-                drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
-            }
+        for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE, TOP_LEFT_X, TOP_LEFT_Y); }
+        
+        
+        // DRAW SNAKE SPRITES
+        // for (int i = 0; i < snakeLength; i++)
+        // {
+        //     if (i == 0 || i == 1)
+        //     {
+        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
+
+        //     }
+        //     else if (i%2 ==0){
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
+        //     }
+        //     else{
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
+        //     }
            
-        }
+        // }
 
-
-if (showAnimation){
-        //draw box border of side = radius
-
-        drawAnimationSq(animationX-workingRadius/2, animationY-workingRadius/2, workingRadius, WHITE, 0);
-       
-       
-}
            
         
 
@@ -1043,27 +969,32 @@ if (showAnimation){
         }
         // Delay before clearing snake.
         int duration = DELAY;
-        while (duration > 0)
-        {
-            duration--;
-        }
+        while (duration > 0) { duration--; }
 
 
+
+        //  for (int i = 0; i < snakeLength; i++)
+        // {
+        //     if (i == 0 || i == 1)
+        //     {
+        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
+        //     }
+        //     else if (i%2 ==0){
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
+        //     }
+        //     else{
+        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
+        //     }
+           
+        // }
 
         // Clear snake after delay.
-        for (int i = 0; i < snakeLength; i++)
-        {
-            boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR);
-        }
+       for (int i = 0; i < snakeLength; i++)
+       {
+           boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
+       }
 
-        if (showAnimation){
-        drawAnimationSq(animationX-(workingRadius)/2, animationY-(workingRadius)/2, workingRadius, BLACK, 0);
-         workingRadius = workingRadius + 10;
-        if (workingRadius > 240){
-            workingRadius = 0;
-            showAnimation = false;
-       }
-       }
+     
       
 
        
