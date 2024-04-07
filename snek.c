@@ -65,10 +65,7 @@ volatile int *pSW = (int *)SW_BASE;
 #define WIDTH 320
 #define HEIGHT 240
 
-#define RED 0xF800
-#define WHITE 0xFFFF
 
-#define BLACK 0
 #define CLEAR BLACK
 #define SHADING_OFFSET 10305
 
@@ -100,10 +97,10 @@ void delay(int duration);
 
 
 volatile int *pPS2 = (int *)PS2_BASE;
-///////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-//////////////////////////////////////////////////////////////////////////////////////////// Interrupts
+///////////////////////////////////////////////////////////////////////////////////// Interrupts
 
 // IRQ (Interrupt Request) Numbers
 // Interval timer                   0
@@ -246,6 +243,36 @@ void the_exception(void)
 
 //////////////////////////////////////////////////////////////////////////////////////// GAME CONSTANTS
 
+#define RED        0xF800
+#define ORANGE     0xfd00
+#define YELLOW     0xff45
+#define GREEN      0x0707
+#define BLUE       0x2d7f
+#define LAVENDER   0x83b3
+#define PINK       0xfbb4
+#define PEACH      0xfe55
+#define WHITE      0xff9c
+#define LIGHTGREY  0xc618
+#define DARKGREY   0x62aa
+#define BROWN      0xaa87
+#define DARKGREEN  0x042a
+#define DARKPURPLE 0x792a
+#define DARKBLUE   0x216a
+
+
+int entryX = 0;
+int entryY = 0;
+
+int exitX = 0;
+int exitY = 0;
+
+#define WHITE 0xFFFF
+
+#define BLACK 0
+
+
+
+
 #define SECOND 50000000
 #define TRUE 1
 #define FALSE 0
@@ -347,6 +374,7 @@ void displayHex(int number);
 
 // Maze
 void path(int currX, int currY);
+void generateMaze();
 void drawMaze();
 
 // Text
@@ -355,17 +383,90 @@ void twrite(char* text, int x, int y, int size, int COLOUR, int typeDuration);
 
 #define MAZE_SIZE 10
 int maze[MAZE_SIZE][MAZE_SIZE];
+int mazeData[MAZE_SIZE * 2 + 1][MAZE_SIZE * 2 + 1];
+
 
 int dir[4][2];
 
+void drawCircle(const int center_x, const int center_y, const int radius, const int COLOUR)
+{
+    if (radius < 0) {return;}
+
+    int x = 0;
+    int y = radius;
+
+    int d = 3 - 2 * radius;
+
+    plot_pixel(center_x + x, center_y + y, COLOUR);
+    plot_pixel(center_x - x, center_y + y, COLOUR);
+    plot_pixel(center_x + x, center_y - y, COLOUR);
+    plot_pixel(center_x - x, center_y - y, COLOUR);
+    plot_pixel(center_x + y, center_y + x, COLOUR);
+    plot_pixel(center_x - y, center_y + x, COLOUR);
+    plot_pixel(center_x + y, center_y - x, COLOUR);
+    plot_pixel(center_x - y, center_y - x, COLOUR);
+
+    while (y >= x)
+    {
+
+        x++;
+
+        if (d > 0)
+        {
+            y--;
+            d = d + 4 * (x - y) + 10;
+        }
+        else
+        {
+            d = d + 4 * x + 6;
+        }
+
+        plot_pixel(center_x + x, center_y + y, COLOUR);
+        plot_pixel(center_x - x, center_y + y, COLOUR);
+        plot_pixel(center_x + x, center_y - y, COLOUR);
+        plot_pixel(center_x - x, center_y - y, COLOUR);
+        plot_pixel(center_x + y, center_y + x, COLOUR);
+        plot_pixel(center_x - y, center_y + x, COLOUR);
+        plot_pixel(center_x + y, center_y - x, COLOUR);
+        plot_pixel(center_x - y, center_y - x, COLOUR);
+
+    }
+}
+
+struct frame
+{
+    int explosionRadius;
+    int foodX;
+    int foodY;
+    bool offsetEven;
+};
+
+
+struct frame prevFrame;    // last frame.
+struct frame prevFrameTwo; // frame before last frame.
+struct frame currFrame;
+
+int frameCount = 0;
+#define EXPLOSION_FRAME_RATE 45
+#define SNAKE_FRAME_RATE 15
+
+#define REFRESH_RATE 60
+#define EXPLOSION_RADIUS 25
+
+bool drawExplosion = false;
+
+int explosionX = 0;
+int explosionY = 0;
+
 int main(void)
 {
+
     *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
     NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
     NIOS2_WRITE_STATUS(1); // Enable Nios II to accept interrupts.
 
     animationRadius = sqrt((240 * 240) + (240 * 240)) ;
-    frame ++;
+    frame++;
 
     // Clear buffers.
     // Place front buffer at the back, wait for swap.
@@ -382,6 +483,11 @@ int main(void)
     // Generate random seed.
     srand(2444);
 
+    // pixel_buffer_start = *(pixel_ctrl_ptr);
+    // drawBox(0, 0, 10, RED, 0, 0);
+
+
+    // while(true);
     // Init food.
     bool foodFound = true;
     int foodX = 0;
@@ -391,6 +497,7 @@ int main(void)
     struct cell prev_snake     [MAX_SNAKE_LENGTH];
     struct cell prev_snake_two [MAX_SNAKE_LENGTH];
 
+
     // Start with 1 block snake by default.
     snakeLength = STARTING_LENGTH;
 
@@ -399,27 +506,47 @@ int main(void)
 
     // Border animation on front buffer.
     pixel_buffer_start = *(pixel_ctrl_ptr);
-    drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 10000);
+    drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 100);
     pixel_buffer_start = *(pixel_ctrl_ptr + 1);
+
+    currFrame.explosionRadius = 0;
+    prevFrame.explosionRadius = 0;
+    prevFrameTwo.explosionRadius = 0;
+
+    generateMaze();
+    drawMaze();
+
+    headX = entryX;
+    headY = entryY;
+
+    snake[0].x = entryX;
+    snake[0].y = entryY;
 
     // Game loop.
     while (TRUE)
     {
 
+        // for(int i =0; i < SECOND/100; ++i);
+
+        // drawCircle(CENTER_X, CENTER_Y, r, CLEAR);
+
+
         // Store
         // Clear
-        // Update / Draw
+        // Update
+        // Draw
 
         /////////////////////////////////////////////////////////////////////////////////////////////////// STORE
         // Store last two frames for double buffering.
 		for (int i = 0; i < snakeLength; i++)
 		{
-            // Prev Frame 2 <-- Prev Frame 1
+            // Prev Frame 2 <-- Prev Frame
             prev_snake_two[i].x      = prev_snake[i].x;
             prev_snake_two[i].y      = prev_snake[i].y;
             prev_snake_two[i].active = prev_snake[i].active;
             prev_snake_two[i].dirX   = prev_snake[i].dirX;
             prev_snake_two[i].dirY   = prev_snake[i].dirY;
+
 
             // Prev Frame 1 <-- Current Frame
             prev_snake[i].x      = snake[i].x;
@@ -427,16 +554,106 @@ int main(void)
             prev_snake[i].active = snake[i].active;
             prev_snake[i].dirX   = snake[i].dirX;
             prev_snake[i].dirY   = snake[i].dirY;
+
 		}
+
+        prevFrameTwo.explosionRadius = prevFrame.explosionRadius;
+        prevFrame.explosionRadius = currFrame.explosionRadius;
+
+        prevFrameTwo.foodX = prevFrame.foodX;
+        prevFrame.foodX = currFrame.foodX;
+
+        prevFrameTwo.foodY = prevFrame.foodY;
+        prevFrame.foodY = currFrame.foodY;
+
+        prevFrameTwo.offsetEven = prevFrame.offsetEven;
+        prevFrame.offsetEven = currFrame.offsetEven;
+
+
         ///////////////////////////////////////////////////////////////////////////////////////// STORE
 
         ///////////////////////////////////////////////////////////////////////////////////////// CLEAR
-        // Clear current frame (information from penultimate frame)
+
+        // Clear current food.
+        clearFruit(prevFrameTwo.foodX, prevFrameTwo.foodY + prevFrameTwo.offsetEven, SCALE, CLEAR);
+
+        offsetEven = !offsetEven;
+        offsetOdd  = !offsetOdd;
+
+
+        // Clear current frame (using information from penultimate frame)
+
+        // Clear snake
         for (int i = 0; i < snakeLength; i++)
         {
             drawBox(prev_snake_two[i].x, prev_snake_two[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
         }
+
+
+        if (drawExplosion)
+        {
+
+        if (currFrame.explosionRadius < (EXPLOSION_RADIUS + 2))
+        {
+            drawCircle(explosionX, explosionY, prevFrameTwo.explosionRadius, CLEAR);
+
+            if (frameCount % (REFRESH_RATE / EXPLOSION_FRAME_RATE) == 0)
+            {
+                currFrame.explosionRadius++;
+            }
+
+
+            if (currFrame.explosionRadius < EXPLOSION_RADIUS)
+            {
+                drawCircle(explosionX, explosionY, currFrame.explosionRadius, fruits[fruitIdx]);
+            }
+            else
+            {
+                drawCircle(explosionX, explosionY, currFrame.explosionRadius, CLEAR);
+
+                if (currFrame.explosionRadius == EXPLOSION_RADIUS + 2){
+                    drawExplosion = false;
+                    currFrame.explosionRadius = 0;
+                    currFrame.explosionRadius = 0;
+                    prevFrame.explosionRadius = 0;
+                    prevFrameTwo.explosionRadius = 0;
+                }
+                // while(true){}
+            }
+        }
+        }
+        else
+        {
+            explosionX = foodX * SCALE + TOP_LEFT_X;
+            explosionY = foodY * SCALE + TOP_LEFT_Y;
+        }
+
+
+        drawMaze();
+
+
+
+        // drawCircle(CENTER_X, CENTER_Y, prevFrame.explosionRadius, CLEAR);
+
+        // drawCircle(CENTER_X, CENTER_Y, prevFrameTwo.explosionRadius - 5, YELLOW);
+
+
         ////////////////////////////////////////////////////////////////////////////////////// CLEAR
+
+
+        // drawCircle(CENTER_X, CENTER_Y, prevFrameTwo.explosionRadius, BLACK);
+        // wait_for_vsync();
+
+
+
+
+
+        // drawCircle(CENTER_X, CENTER_Y, prevFrameTwo.explosionRadius, CLEAR);
+
+
+
+        // drawCircle(CENTER_X, CENTER_Y, currFrame.explosionRadius - 5, WHITE);
+
 
         // Draw Center Mark
         plot_pixel(CENTER_X, CENTER_Y, WHITE);
@@ -455,6 +672,9 @@ int main(void)
             fruitIdx = rand() % 5;
         }
 
+        foodX = exitX;
+        foodY = exitY;
+
         // Draw food.
         drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
 
@@ -466,42 +686,51 @@ int main(void)
         if (headX + dirX < 0 || headX + dirX > GAME_WIDTH){ dirX = 0;}
         if (headY + dirY < 0 || headY + dirY > GAME_WIDTH){ dirY = 0;}
 
-        // Move head
-        headX += dirX;
-        headY += dirY;
+        printf("%d\n-- %d\n", headX + dirX, mazeData[headY][headX]);
 
-        // Store head position and direction.
-        snake[0].x    = headX;
-        snake[0].y    = headY;
-        snake[0].dirX = dirX;
-        snake[0].dirY = dirY;
-
-        // Check for body intersection.
-        // Avoid snake from collapsing into itself.
-
-        // Should i = 2?
-        //   for (int i = 2; i < snakeLength; i++)
-        // {
-
-        //   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
-        // {
-        //   while(true)
-        // {
-        // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
-        //}
-        //}
-        //}
-
-        // Update positions of the rest of snake body.
-        if (dirX != 0 || dirY != 0)
+        if (mazeData[headY + dirY][headX + dirX] == 0 )
         {
-            for (int i = snakeLength - 1; i > 0; --i)
-            {
-                snake[i].x    = snake[i - 1].x;    // Position
-                snake[i].y    = snake[i - 1].y;
 
-                snake[i].dirX = snake[i - 1].dirX; // Direction
-                snake[i].dirY = snake[i - 1].dirY;
+        }
+        else if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
+        {
+            // Move head
+            headX += dirX;
+            headY += dirY;
+
+            // Store head position and direction.
+            snake[0].x    = headX;
+            snake[0].y    = headY;
+            snake[0].dirX = dirX;
+            snake[0].dirY = dirY;
+
+            // Check for body intersection.
+            // Avoid snake from collapsing into itself.
+
+            // Should i = 2?
+            //   for (int i = 2; i < snakeLength; i++)
+            // {
+
+            //   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
+            // {
+            //   while(true)
+            // {
+            // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
+            //}
+            //}
+            //}
+
+            // Update positions of the rest of snake body.
+            if (dirX != 0 || dirY != 0)
+            {
+                for (int i = snakeLength - 1; i > 0; --i)
+                {
+                    snake[i].x    = snake[i - 1].x;    // Position
+                    snake[i].y    = snake[i - 1].y;
+
+                    snake[i].dirX = snake[i - 1].dirX; // Direction
+                    snake[i].dirY = snake[i - 1].dirY;
+                }
             }
         }
 
@@ -511,6 +740,8 @@ int main(void)
          // Colliding with food.
         if (headX == foodX && headY == foodY)
         {
+            drawExplosion = true;
+
             showAnimation = true;
 
             foodFound = true;
@@ -546,18 +777,20 @@ int main(void)
         //     drawBox(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
         // }
 
-        // Clear current food.
-        clearFruit(foodX, foodY+offsetEven, SCALE, CLEAR);
-        offsetOdd  = !offsetOdd;
-        offsetEven = !offsetEven;
 
 
         // Delay.
         // for (int i = 0; i < 1000000; ++i);
 
         // Wait for buffer swap to set write buffer.
-        wait_for_vsync();
+
+        wait_for_vsync(); // swap every 1/60s
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1);
+
+
+        frameCount = (frameCount + 1) % 60; // 0 - 59
+
+        // drawCircle(CENTER_X, CENTER_Y, currFrame.explosionRadius, CLEAR);
     }
 }
 
@@ -762,6 +995,18 @@ void plot_pixel_delay(int x, int y, short int line_color, int delay)
     }
 }
 
+// void drawMBox(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y)
+// {
+//     // Draw a (LENGTH x LENGTH) Box.
+//     for (int j = 0; j < LENGTH; ++j)
+//     {
+//         for (int k = 0; k < LENGTH; ++k)
+//         {
+//             plot_pixel(startX   + k + OFFSET_X, startY + j + OFFSET_Y, COLOUR);
+//         }
+//     }
+// }
+
 void drawBox(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y)
 {
     // Draw a (LENGTH x LENGTH) Box.
@@ -769,7 +1014,7 @@ void drawBox(int startX, int startY, const int LENGTH, const int COLOUR, int OFF
     {
         for (int k = 0; k < LENGTH; ++k)
         {
-            plot_pixel(startX * LENGTH + k + OFFSET_X, startY * LENGTH + j + OFFSET_Y, COLOUR);
+            plot_pixel(startX * LENGTH  + k + OFFSET_X, startY * LENGTH  + j + OFFSET_Y, COLOUR);
         }
     }
 }
@@ -1045,10 +1290,61 @@ void path(int currX, int currY)
             // Current cell has been visited.
             maze[currY][currX] = 1;
 
-            drawLine(currX * 2, currY * 2, newX * 2, newY * 2, WHITE);
+            // Draw line
+            int x0 = currX * 2, y0 = currY * 2;
+            int x1 = newX * 2, y1 = newY * 2;
 
-            // plot_pixel(newX * 2, newY * 2, WHITE);
-            printf("%d, %d \n", newX, newY);
+            int is_steep = (int)abs(y1 - y0) > (int)abs(x1 - x0);
+
+            if (is_steep)
+            {
+                swap(&x0, &y0);
+                swap(&x1, &y1);
+            }
+
+            if (x0 > x1)
+            {
+                swap(&x0, &x1);
+                swap(&y0, &y1);
+            }
+
+            int deltax = x1 - x0;
+            int deltay = abs(y1 - y0);
+            int error = -(deltax / 2);
+            int y = y0;
+            int y_step = 1;
+
+            if (y0 < y1)
+            {
+                y_step = 1;
+            }
+            else
+            {
+                y_step = -1;
+            }
+
+            for (int x = x0; x <= x1; x++)
+            {
+                if (is_steep)
+                {
+                    mazeData[x + 1][y + 1] = 1;
+                }
+                else
+                {
+                    mazeData[y + 1][x + 1] = 1;
+                }
+
+                error = error + deltay;
+
+                if (error > 0)
+                {
+                    y = y + y_step;
+                    error = error - deltax;
+                }
+            }
+
+
+            // printf("%d, %d \n", newX, newY);
             path(newX, newY);
         }
     }
@@ -1056,27 +1352,106 @@ void path(int currX, int currY)
     return;
 }
 
-void drawMaze()
+
+void generateMaze()
 {
     for (int i = 0; i < MAZE_SIZE; ++i)
     {
         for (int j = 0; j < MAZE_SIZE; ++j)
         {
             maze[i][j] = 0;
-        }
-    }
-
-    for (int y = 0; y < 20; ++y)
-    {
-        for (int x = 0; x < 20; ++x)
-        {
-            plot_pixel(x * 2, y * 2, RED);
+            mazeData[i][j] = 0;
         }
     }
 
     path(0, 0);
+
+    // Generate entry
+
+    bool notFound = true;
+
+    for (int i = 0; i < 2; i++)
+    {
+        int openingX = -1;
+        int openingY = -1;
+
+        while (notFound)
+        {
+            int entry = (rand() % (MAZE_SIZE * 2 + 1));
+            int side  = (rand() % 4);
+
+            int dirX = 0;
+            int dirY = 0;
+
+            if (side == 0)
+            {
+                openingX = 0;
+                dirX = 1;
+            }
+            else if (side == 1)
+            {
+                openingX = MAZE_SIZE * 2;
+                dirX = -1;
+            }
+            else if (side == 2)
+            {
+                openingY = 0;
+                dirY = 1;
+            }
+            else
+            {
+                openingY = MAZE_SIZE * 2;
+                dirY = -1;
+            }
+
+            if (openingX == -1) {openingX = entry;}
+            else {openingY = entry;}
+
+            if (mazeData[openingY + dirY][openingX + dirX] == 0)
+            {
+                notFound = true;
+            }
+            else
+            {
+                mazeData[openingY][openingX] = 1;
+                notFound = false;
+            }
+        }
+
+
+        if (i == 0)
+        {
+            entryX = openingX;
+            entryY = openingY;
+        }
+        else if (i == 1)
+        {
+            exitX = openingX;
+            exitY = openingY;
+        }
+
+        notFound = true;
+    }
 }
 
+
+void drawMaze()
+{
+    for (int y = 0; y < (MAZE_SIZE * 2 + 1); y++)
+    {
+        for (int x = 0; x < (MAZE_SIZE * 2 + 1); x++)
+        {
+            if (mazeData[y][x] == 1)
+            {
+                drawBox(x, y, SCALE, DARKGREY, TOP_LEFT_X, TOP_LEFT_Y);
+            }
+            else
+            {
+                drawBox(x, y, SCALE, ORANGE, TOP_LEFT_X, TOP_LEFT_Y);
+            }
+        }
+    }
+}
 void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR, const int delay)
 {
     // Draw a (LENGTH x LENGTH) outline.
@@ -1652,3 +2027,5 @@ void PS2_ISR(void)
 
     return;
 }
+
+// Mutliple fruits, better randomization
