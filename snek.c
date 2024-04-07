@@ -284,7 +284,7 @@ int exitY = 0;
 #define MAX_SNAKE_LENGTH GAME_WIDTH *GAME_WIDTH
 #define STARTING_LENGTH 2
 #define SCALE 9
-#define RANDOM_RANGE 5
+#define RANDOM_RANGE GAME_WIDTH
 
 // Center point
 #define CENTER_X  (int) WIDTH / 2
@@ -439,6 +439,7 @@ struct frame
     int foodX;
     int foodY;
     bool offsetEven;
+    int score;
 };
 
 
@@ -454,6 +455,7 @@ int frameCount = 0;
 #define EXPLOSION_RADIUS 25
 
 bool drawExplosion = false;
+bool mazeMode = false;
 
 int explosionX = 0;
 int explosionY = 0;
@@ -461,6 +463,7 @@ int explosionY = 0;
 int main(void)
 {
 
+    // Interrupts
     // *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
     // NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
     // NIOS2_WRITE_STATUS(1); // Enable Nios II to accept interrupts.
@@ -512,20 +515,28 @@ int main(void)
     currFrame.explosionRadius = 0;
     prevFrame.explosionRadius = 0;
     prevFrameTwo.explosionRadius = 0;
+    
+    if (mazeMode)
+    {
+        generateMaze();
+        drawMaze();
 
-    generateMaze();
-    drawMaze();
+        headX = entryX;
+        headY = entryY;
+    }
+    else
+    {
+        headX = 0;
+        headY = 0;
+    }
 
-    headX = entryX;
-    headY = entryY;
-
-    snake[0].x = entryX;
-    snake[0].y = entryY;
+    snake[0].x = headX;
+    snake[0].y = headY;
 
     // Game loop.
     while (TRUE)
     {
-
+        // Global delay.
         // for(int i =0; i < SECOND/100; ++i);
 
         // drawCircle(CENTER_X, CENTER_Y, r, CLEAR);
@@ -557,30 +568,39 @@ int main(void)
 
 		}
 
+        // Explosion
         prevFrameTwo.explosionRadius = prevFrame.explosionRadius;
         prevFrame.explosionRadius = currFrame.explosionRadius;
 
         prevFrameTwo.foodX = prevFrame.foodX;
         prevFrame.foodX = currFrame.foodX;
 
+        // Food frame
         prevFrameTwo.foodY = prevFrame.foodY;
         prevFrame.foodY = currFrame.foodY;
-
+        
         prevFrameTwo.offsetEven = prevFrame.offsetEven;
         prevFrame.offsetEven = currFrame.offsetEven;
 
+        // Score
+        prevFrameTwo.score = prevFrame.score;
+        prevFrame.score    = currFrame.score;
 
         ///////////////////////////////////////////////////////////////////////////////////////// STORE
 
         ///////////////////////////////////////////////////////////////////////////////////////// CLEAR
 
+        char* text;
+        sprintf(text, "%d", prevFrameTwo.score);
+        twrite(text, 0, 0, 3, BLACK, 0);
+        
         // Clear current food.
         clearFruit(prevFrameTwo.foodX, prevFrameTwo.foodY + prevFrameTwo.offsetEven, SCALE, CLEAR);
 
         offsetEven = !offsetEven;
         offsetOdd  = !offsetOdd;
 
-
+      
         // Clear current frame (using information from penultimate frame)
 
         // Clear snake
@@ -590,6 +610,7 @@ int main(void)
         }
 
 
+        // Draw explosion.
         if (drawExplosion)
         {
 
@@ -629,7 +650,10 @@ int main(void)
         }
 
 
-        drawMaze();
+        if (mazeMode)
+        {
+            drawMaze();
+        }
 
 
 
@@ -667,13 +691,16 @@ int main(void)
             foodFound = false;
             // Generate new food position.
             foodX = rand() % (RANDOM_RANGE + 1);
-            foodY = 0;
+            foodY = rand() % (RANDOM_RANGE + 1);
             // Generate new food.
             fruitIdx = rand() % 5;
         }
 
-        foodX = exitX;
-        foodY = exitY;
+        if(mazeMode)
+        {
+            foodX = exitX;
+            foodY = exitY;
+        }
 
         // Draw food.
         drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
@@ -688,7 +715,7 @@ int main(void)
 
         printf("%d\n-- %d\n", headX + dirX, mazeData[headY][headX]);
 
-        if (mazeData[headY + dirY][headX + dirX] == 0 )
+        if ( mazeMode && mazeData[headY + dirY][headX + dirX] == 0 )
         {
 
         }
@@ -754,21 +781,22 @@ int main(void)
             snake[snakeLength - 1].active = TRUE; // Set cell to active.
             snake[snakeLength - 1].colour = fruit_color[fruitIdx];
 
-            // Clear score text.
-            char* text;
-            sprintf(text, "%d", score);
-			twrite(text, 0, 0, 3, BLACK, 0);
+            // // Clear score text.
+            // char* text;
+            // sprintf(text, "%d", score);
+			// twrite(text, 0, 0, 3, BLACK, 0);
 
             // Update score.
             score = snakeLength - 1;
 
             // Display score on HEX displays and LEDs.
-            *pLED = score;
-            displayHex(score);
-
-			sprintf(text, "%d", score);
-			twrite(text, 0, 0, 3, WHITE, 0);
         }
+        
+        *pLED = score;
+        displayHex(score);
+
+        sprintf(text, "%d", score);
+        twrite(text, 0, 0, 3, WHITE, 0);
 
 
         // // Clear snake.
@@ -2029,3 +2057,4 @@ void PS2_ISR(void)
 }
 
 // Mutliple fruits, better randomization
+// Fixing Read FIFO
