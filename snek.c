@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdlib.h>
-
+#include <string.h>
 /////////////////////////////////////////////////////////////////////////////////////////////////// LIB
 
 /////////////////////////////////////////////////////////////////////////////////////////////////// I/O
@@ -266,14 +266,14 @@ int entryY = 0;
 int exitX = 0;
 int exitY = 0;
 
-#define WHITE 0xFFFF
+// #define WHITE 0xFFFF
 
 #define BLACK 0
 
 
 
 
-#define SECOND 50000000
+// #define SECOND 50000000
 #define TRUE 1
 #define FALSE 0
 
@@ -284,7 +284,7 @@ int exitY = 0;
 #define MAX_SNAKE_LENGTH GAME_WIDTH *GAME_WIDTH
 #define STARTING_LENGTH 2
 #define SCALE 9
-#define RANDOM_RANGE GAME_WIDTH
+#define RANDOM_RANGE 5
 
 // Center point
 #define CENTER_X  (int) WIDTH / 2
@@ -306,7 +306,7 @@ int headY = 0;
 int dirX = 0;
 int dirY = 0;
 
-// int acceptInput = TRUE;
+int acceptInput = TRUE;
 int snakeLength = 1;
 
 int frame = 0;
@@ -461,9 +461,9 @@ int explosionY = 0;
 int main(void)
 {
 
-    *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
-    NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
-    NIOS2_WRITE_STATUS(1); // Enable Nios II to accept interrupts.
+    // *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
+    // NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
+    // NIOS2_WRITE_STATUS(1); // Enable Nios II to accept interrupts.
 
     animationRadius = sqrt((240 * 240) + (240 * 240)) ;
     frame++;
@@ -513,14 +513,14 @@ int main(void)
     prevFrame.explosionRadius = 0;
     prevFrameTwo.explosionRadius = 0;
 
-    // generateMaze();
-    // drawMaze();
+    generateMaze();
+    drawMaze();
 
-    headX = 0;
-    headY = 0;
+    headX = entryX;
+    headY = entryY;
 
-    snake[0].x = headX;
-    snake[0].y = headY;
+    snake[0].x = entryX;
+    snake[0].y = entryY;
 
     // Game loop.
     while (TRUE)
@@ -605,7 +605,7 @@ int main(void)
 
             if (currFrame.explosionRadius < EXPLOSION_RADIUS)
             {
-                drawCircle(explosionX, explosionY, currFrame.explosionRadius, fruits[fruitIdx]);
+                drawCircle(explosionX, explosionY, currFrame.explosionRadius, (int)fruits[fruitIdx]);
             }
             else
             {
@@ -629,7 +629,7 @@ int main(void)
         }
 
 
-        // drawMaze();
+        drawMaze();
 
 
 
@@ -667,19 +667,19 @@ int main(void)
             foodFound = false;
             // Generate new food position.
             foodX = rand() % (RANDOM_RANGE + 1);
-            foodY = rand() % (RANDOM_RANGE + 1);
+            foodY = 0;
             // Generate new food.
             fruitIdx = rand() % 5;
         }
 
-        // foodX = exitX;
-        // foodY = exitY;
+        foodX = exitX;
+        foodY = exitY;
 
         // Draw food.
         drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
 
         // Poll for input.
-        // input();
+        input();
         // printf("X: %d   Y: %d \n", headX, headY);
 
         // Boundary checks.
@@ -688,12 +688,11 @@ int main(void)
 
         printf("%d\n-- %d\n", headX + dirX, mazeData[headY][headX]);
 
-        // if (mazeData[headY + dirY][headX + dirX] == 0 )
-        // {
+        if (mazeData[headY + dirY][headX + dirX] == 0 )
+        {
 
-        // }
-        // else
-        if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
+        }
+        else if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
         {
             // Move head
             headX += dirX;
@@ -856,67 +855,67 @@ int dir[4][2] =
         {-1, 0}  // West
 };
 
-// void input()
-// {
-//     unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
-//     int previousKey = byte2;
-//     int PS2_data, RVALID;
+void input()
+{
+    unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
+    int previousKey = byte2;
+    int PS2_data, RVALID;
 
-//     // Handle key input via polling.
+    // Handle key input via polling.
 
-//     PS2_data = *(pPS2);           // read the Data register in the PS/2 port
-//     RVALID = (PS2_data & 0x8000); // extract the RVALID field
+    PS2_data = *(pPS2);           // read the Data register in the PS/2 port
+    RVALID = (PS2_data & 0x8000); // extract the RVALID field
 
-//     if (RVALID != 0)
-//     {
-//         byte3 = PS2_data & 0xFF;
-//     }
+    if (RVALID != 0)
+    {
+        byte3 = PS2_data & 0xFF;
+    }
 
-//     if (byte3 == BREAK)
-//     {
-//         acceptInput = TRUE; // Wait for a break before accepting input.
-//     }
-//     else if (byte3 == LEFT_KEY && acceptInput)
-//     {
-//         acceptInput = FALSE;
-
-
-//         // printf("LEFT KEY\n");
-
-//         dirX = -1;
-//         dirY = 0;
-//     }
-//     else if (byte3 == RIGHT_KEY && acceptInput)
-//     {
-//         acceptInput = FALSE;
+    if (byte3 == BREAK)
+    {
+        acceptInput = TRUE; // Wait for a break before accepting input.
+    }
+    else if (byte3 == LEFT_KEY && acceptInput)
+    {
+        acceptInput = FALSE;
 
 
-//         // printf("RIGHT KEY\n");
+        // printf("LEFT KEY\n");
 
-//         dirX = 1;
-//         dirY = 0;
-//     }
-//     else if (byte3 == UP_KEY && acceptInput)
-//     {
-//         acceptInput = FALSE;
-
-
-//         // printf("UP KEY\n");
-
-//         dirX = 0; // Set direction
-//         dirY = -1;
-//     }
-//     else if (byte3 == DOWN_KEY && acceptInput)
-//     {
-//         acceptInput = FALSE;
+        dirX = -1;
+        dirY = 0;
+    }
+    else if (byte3 == RIGHT_KEY && acceptInput)
+    {
+        acceptInput = FALSE;
 
 
-//         // printf("DOWN KEY\n");
+        // printf("RIGHT KEY\n");
 
-//         dirX = 0;
-//         dirY = 1;
-//     }
-// }
+        dirX = 1;
+        dirY = 0;
+    }
+    else if (byte3 == UP_KEY && acceptInput)
+    {
+        acceptInput = FALSE;
+
+
+        // printf("UP KEY\n");
+
+        dirX = 0; // Set direction
+        dirY = -1;
+    }
+    else if (byte3 == DOWN_KEY && acceptInput)
+    {
+        acceptInput = FALSE;
+
+
+        // printf("DOWN KEY\n");
+
+        dirX = 0;
+        dirY = 1;
+    }
+}
 
 // Check if READ FIFO is empty.
 bool isReadEmpty()
