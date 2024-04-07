@@ -1,25 +1,37 @@
-/////////////////////////////////////////////// LIB
+/////////////////////////////////////////////////////////////////////////////////////////////////// LIB
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
 #include <stdlib.h>
 
-/////////////////////////////////////////////// LIB
+/////////////////////////////////////////////////////////////////////////////////////////////////// LIB
 
-/////////////////////////////////////////////// I/O
+/////////////////////////////////////////////////////////////////////////////////////////////////// I/O
+
+///////////////////////////////////////// 9 - 0 Red LEDs
 #define LED_BASE 0xFF200000
-// 9 - 0 Red LEDs
+volatile int *pLED = (int *)LED_BASE;
 
-#define KEY_BASE 0xff200050
+// Pushbuttons (Keys)
+
 // DATA REG
 // DIRECTION REG
 // INTERRUPT MASK REG
 // EDGE CAPTURE REG
+/////////////////////////////////////////
 
+///////////////////////////////////////// 9 - 0 Red LEDs
+#define KEY_BASE 0xff200050
+volatile int *pKEY = (int *)KEY_BASE;
+///////////////////////////////////////// 9 - 0 Red LEDs
+
+///////////////////////////////////////// 9 - 0 Switches
 #define SW_BASE 0xFF200040
-// 9 - 0 SWITCHES
+volatile int *pSW = (int *)SW_BASE;
+/////////////////////////////////////////
 
-// 7 Seg Display
+///////////////////////////////////////// 7 Seg Display
 #define ADDR_7SEG0 ((volatile long *)0xFF200020)
 #define ADDR_7SEG1 ((volatile long *)0xFF200030)
 
@@ -34,24 +46,20 @@
 #define HEX_EIGHT 0b1111111 // 8
 #define HEX_NINE 0b1101111  // 9
 #define HEX_EMPTY 0b0000000 // 9
+/////////////////////////////////////////
 
-// Pointers
-volatile int *pLED = (int *)LED_BASE;
-volatile int *pKEY = (int *)KEY_BASE;
-volatile int *pSW = (int *)SW_BASE;
 
-///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////// AUDIO
+///////////////////////////////////////////////////////////////////////////////////////////////// AUDIO
 #define AUDIO_BASE 0xFF203040
 // CONTROL      WI RI ... CW CR WE RE
 // FIFOSPACE    WSLC WSRC RALC RARC
 // LEFT DATA
 // RIGHT DATA
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////
-
-/////////////////////////////////////////////// VGA
+/////////////////////////////////////////////////////////////////////////////////////////////////// VGA
 #define PIXEL_BUFFER 0xFF203020
 
 #define WIDTH 320
@@ -72,15 +80,15 @@ volatile int *pixel_ctrl_ptr = (int*) PIXEL_BUFFER;
 short int Buffer1[HEIGHT][512]; // Front buffer 240 rows, 512 (320 + padding) columns
 short int Buffer2[HEIGHT][512]; // Back buffer
 
-
 // Prototypes
 void wait_for_vsync();
 void clear_screen();
 void plot_pixel(int x, int y, short int line_color);
 void delay(int duration);
-///////////////////////////////////////////////
 
-////////////////////////////////////////// PS/2
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////// PS/2
 #define PS2_BASE 0xFF200100 // Address required for DE1-SOC
 
 // Arrow Keys
@@ -92,10 +100,151 @@ void delay(int duration);
 
 
 volatile int *pPS2 = (int *)PS2_BASE;
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//////////////////////////////////////////
 
-////////////////////////////////////////// GAME CONSTANTS
+//////////////////////////////////////////////////////////////////////////////////////////// Interrupts
+
+// IRQ (Interrupt Request) Numbers
+// Interval timer                   0
+// Pushbutton switch parallel port  1
+// Second Interval timer            2
+// Audio port                       6
+// PS/2 port                        7
+// JTAG port                        8
+// IrDA port                        9
+// Serial port                     10
+// JP1 Expansion parallel port     11
+// JP2 Expansion parallel port     12
+// PS/2 port dual                  23
+
+#define NIOS2_READ_STATUS(dest)   do { dest = __builtin_rdctl(0); } while (0)
+#define NIOS2_WRITE_STATUS(src)   do {__builtin_wrctl(0, src); } while (0)
+#define NIOS2_READ_ESTATUS(dest)  do { dest = __builtin_rdctl(1); } while (0)
+#define NIOS2_READ_BSTATUS(dest)  do { dest = __builtin_rdctl(2); } while (0)
+#define NIOS2_READ_IENABLE(dest)  do { dest = __builtin_rdctl(3); } while (0)
+#define NIOS2_WRITE_IENABLE(src)  do {__builtin_wrctl(3, src); } while (0)
+#define NIOS2_READ_IPENDING(dest) do { dest = __builtin_rdctl(4); } while (0)
+#define NIOS2_READ_CPUID(dest)    do { dest = __builtin_rdctl(5); } while (0)
+
+
+// ISR
+void PS2_ISR(void);
+
+
+// IRH
+void interrupt_handler(void)
+{
+    // Pending interrupts (to-be0handled)
+    int ipending;
+    NIOS2_READ_IPENDING(ipending);
+
+    if (ipending & 0b10000000) { PS2_ISR(); }
+    return; // Ignore all other interrupts
+}
+
+
+void the_reset(void) __attribute__((section(".reset")));
+void the_reset(void)
+{
+    asm(".set noat");      /* Instruct the assembler NOT to use reg at (r1) as
+                            * a temp register for performing optimizations */
+    asm(".set nobreak");   /* Suppresses a warning message that says that
+                            * some debuggers corrupt regs bt (r25) and ba
+                            * (r30)
+                            */
+    asm("movia r2, main"); // Call the C language main program
+    asm("jmp r2");
+}
+
+void the_exception(void) __attribute__((section(".exceptions")));
+void the_exception(void)
+{
+    asm("subi sp, sp, 128");
+    asm("stw et, 96(sp)");
+    asm("rdctl et, ctl4");
+    asm("beq et, r0, SKIP_EA_DEC"); // Interrupt is not external
+    asm("subi ea, ea, 4");          /* Must decrement ea by one instruction
+                                     * for external interupts, so that the
+                                     * interrupted instruction will be run */
+    asm("SKIP_EA_DEC:");
+    asm("stw r1, 4(sp)"); // Save all registers
+    asm("stw r2, 8(sp)");
+    asm("stw r3, 12(sp)");
+    asm("stw r4, 16(sp)");
+    asm("stw r5, 20(sp)");
+    asm("stw r6, 24(sp)");
+    asm("stw r7, 28(sp)");
+    asm("stw r8, 32(sp)");
+    asm("stw r9, 36(sp)");
+    asm("stw r10, 40(sp)");
+    asm("stw r11, 44(sp)");
+    asm("stw r12, 48(sp)");
+    asm("stw r13, 52(sp)");
+    asm("stw r14, 56(sp)");
+    asm("stw r15, 60(sp)");
+    asm("stw r16, 64(sp)");
+    asm("stw r17, 68(sp)");
+    asm("stw r18, 72(sp)");
+    asm("stw r19, 76(sp)");
+    asm("stw r20, 80(sp)");
+    asm("stw r21, 84(sp)");
+    asm("stw r22, 88(sp)");
+    asm("stw r23, 92(sp)");
+    asm("stw r25, 100(sp)"); // r25 = bt (skip r24 = et, because it is saved
+    // above)
+    asm("stw r26, 104(sp)"); // r26 = gp
+    // skip r27 because it is sp, and there is no point in saving this
+    asm("stw r28, 112(sp)"); // r28 = fp
+    asm("stw r29, 116(sp)"); // r29 = ea
+    asm("stw r30, 120(sp)"); // r30 = ba
+    asm("stw r31, 124(sp)"); // r31 = ra
+    asm("addi fp, sp, 128");
+    asm("call interrupt_handler"); // Call the C language interrupt handler
+    asm("ldw r1, 4(sp)");          // Restore all registers
+    asm("ldw r2, 8(sp)");
+    asm("ldw r3, 12(sp)");
+    asm("ldw r4, 16(sp)");
+    asm("ldw r5, 20(sp)");
+    asm("ldw r6, 24(sp)");
+    asm("ldw r7, 28(sp)");
+    asm("ldw r8, 32(sp)");
+    asm("ldw r9, 36(sp)");
+    asm("ldw r10, 40(sp)");
+    asm("ldw r11, 44(sp)");
+    asm("ldw r12, 48(sp)");
+    asm("ldw r13, 52(sp)");
+    asm("ldw r14, 56(sp)");
+    asm("ldw r15, 60(sp)");
+    asm("ldw r16, 64(sp)");
+    asm("ldw r17, 68(sp)");
+    asm("ldw r18, 72(sp)");
+    asm("ldw r19, 76(sp)");
+    asm("ldw r20, 80(sp)");
+    asm("ldw r21, 84(sp)");
+    asm("ldw r22, 88(sp)");
+    asm("ldw r23, 92(sp)");
+    asm("ldw r24, 96(sp)");
+    asm("ldw r25, 100(sp)"); // r25 = bt
+    asm("ldw r26, 104(sp)"); // r26 = gp
+    // skip r27 because it is sp, and we did not save this on the stack
+    asm("ldw r28, 112(sp)"); // r28 = fp
+    asm("ldw r29, 116(sp)"); // r29 = ea
+    asm("ldw r30, 120(sp)"); // r30 = ba
+    asm("ldw r31, 124(sp)"); // r31 = ra
+    asm("addi sp, sp, 128");
+    asm("eret");
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////// GAME CONSTANTS
 
 #define SECOND 50000000
 #define TRUE 1
@@ -122,6 +271,7 @@ volatile int *pPS2 = (int *)PS2_BASE;
 
 #define BOTTOM_RIGHT_X  (int) (CENTER_X + (GAME_WIDTH / 2) * SCALE)
 #define BOTTOM_RIGHT_Y  (int) (CENTER_Y + (GAME_HEIGHT / 2) * SCALE)
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int headX = 0;
 int headY = 0;
@@ -129,7 +279,7 @@ int headY = 0;
 int dirX = 0;
 int dirY = 0;
 
-int acceptInput = TRUE;
+// int acceptInput = TRUE;
 int snakeLength = 1;
 
 int frame = 0;
@@ -156,515 +306,442 @@ struct cell
 
 struct cell snake[MAX_SNAKE_LENGTH];
 
-unsigned int fruits[5][9][9] = {
-   {
-    {0x0262, 0x0262, 0xBB01, 0xFBE0, 0x2589, 0xFBE0, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0xBB01, 0xFBE0, 0x2589, 0x2589, 0x2589, 0xFBE0, 0x0262, 0x0262},
-    {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0x2589, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262},
-    {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
-    {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
-    {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0xFBE0, 0x0262},
-    {0x0262, 0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0xBB01, 0xBB01, 0xFBE0, 0xFBE0, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-},
-{
-    {0x1C27, 0xF720, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-    {0x1C27, 0xF720, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-    {0x1C27, 0xF720, 0xE8E4, 0x0000, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262},
-    {0x1C27, 0xF720, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262 },
-    {0x1C27, 0xF720, 0xE8E4, 0x0000, 0xE8E4, 0x0000, 0xE8E4, 0x0262, 0x0262},
-    {0x1C27, 0xF720, 0xF720, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262},
-    {0x0262, 0x2589, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262},
-    {0x0262, 0x0262, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-
-},
-{
-    {0x0262, 0x0262, 0x1345, 0x1C27, 0x1C27, 0x1C27, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0xC0A3, 0x1345, 0xE8E4, 0xE8E4, 0x1C27, 0xE8E4, 0x0262, 0x0262},
-    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262},
-    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xFD16, 0xE8E4, 0xE8E4, 0x0262},
-    {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xFD16, 0xE8E4, 0x0262, 0x0262},
-    {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0xC0A3, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-},
-{
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x9AC7, 0x9AC7, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262 },
-    {0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-},
-{
-    {0x0262, 0x0262, 0x0262, 0x9AC7, 0x0262, 0x2589, 0x0262, 0x0262, 0x0262 },
-    {0x0262, 0x8846, 0x7825, 0x9AC7, 0x2589, 0x7825, 0xB889, 0x0262, 0x0262},
-    {0x8846, 0x8846, 0x9806, 0xB889, 0xB889, 0x8846, 0x9806, 0x9806, 0x0262},
-    {0x8846, 0x9806, 0x9806, 0x9806, 0x9806, 0x9806, 0xF1AE, 0x9806, 0x0262},
-    {0x8846, 0x9806, 0x9806, 0x9806, 0x9806, 0xF1AE, 0xF1AE, 0x9806, 0x0262},
-    {0x8846, 0x8846, 0x9806, 0x9806, 0x9806, 0xF1AE, 0xF1AE, 0x9806, 0x0262},
-    {0x0262, 0x8846, 0x7825, 0x7825, 0x9806, 0x9806, 0x9806, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x7825, 0x7825, 0x7825, 0x7825, 0x0262, 0x0262, 0x0262},
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
-}
-
-};
-
-unsigned int fruit_color[5] = {
-     0xFBE0, 0x1C27,  0xE8E4, 0xF720, 0x9806
-};
-// int snake[MAX_SNAKE_LENGTH] = {0};
-/////////////////////////////////////// SPRITES
-unsigned int snake_body_red[9][9] = {
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
-    {0x0262, 0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, 0x0262, },
-    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, },
-    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
-    {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
-    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
-    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, },
-    {0x0262, 0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, 0x0262, },
-    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
-};
-
-unsigned int snake_head_red[9][9] = {
-     {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, },
-    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
-    {0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0841, 0x0841, 0xE8E4, },
-    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
-    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
-    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0000, 0x0841, 0xE8E4, },
-    {0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
-    {0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
-    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, },
-};
+// RGB565
+// 5 Bits of Red, 6 Bits of Green, 5 Bits of Blue
 
 
-//////////////////////////////////////////
-char number[10][5][3] =
-{
+////////////////////////////////////////////////////////////////////////////////////////////////
 
-//0
-{
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1}
-},
-//1
-{
-    {1, 1, 0},
-    {0, 1, 0},
-    {0, 1, 0},
-    {0, 1, 0},
-    {1, 1, 1}
-},
-//2
-{
-    {1, 1, 1},
-    {0, 0, 1},
-    {1, 1, 1},
-    {1, 0, 0},
-    {1, 1, 1}
-},
-//3
-{
-    {1, 1, 1},
-    {0, 0, 1},
-    {0, 1, 1},
-    {0, 0, 1},
-    {1, 1, 1}
-},
-//4
-{
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {0, 0, 1},
-    {0, 0, 1}
-},
-//5
-{
-    {1, 1, 1},
-    {1, 0, 0},
-    {1, 1, 1},
-    {0, 0, 1},
-    {1, 1, 1}
-},
-//6
-{
-    {1, 0, 0},
-    {1, 0, 0},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1}
-},
-//7
-{
-    {1, 1, 1},
-    {0, 0, 1},
-    {0, 0, 1},
-    {0, 0, 1},
-    {0, 0, 1}
-},
-//8
-{
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1}
-},
-//9
-{
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {0, 0, 1},
-    {0, 0, 1}
-}
+// Assets
+char letter[26][5][3];
+char number[10][5][3];
+unsigned int fruits[5][9][9];
+unsigned int fruit_color[5];
+unsigned int snake_head_red[9][9];
+unsigned int snake_body_red[9][9];
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void input();
+
+void wait_for_vsync();
+void clear_screen(const int COLOUR);
+void plot_pixel(int x, int y, short int line_color);
+void plot_pixel_delay(int x, int y, short int line_color, int delay);
+
+// Draw functions
+void drawAnimationSq(int startX, int startY, const int LENGTH, const int COLOUR, const int delay);
+void drawLine(int x0, int y0, int x1, int y1, int line_color);
+void drawBox(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y);
+void drawBorder(int startX, int startY, const int LENGTH, const int COLOUR, const int delay);
+void drawFruit (int startX, int startY, const int LENGTH, unsigned int fruit[9][9], int offset);
+void drawSnake(int startX, int startY, const int LENGTH, unsigned int snake[9][9], int directionX, int directionY, int offset, int color);
+
+void clearFruit(int startX, int startY, const int LENGTH, int color);
+
+bool isReadEmpty();
+void swap(int *x, int *y);
+void displayHex(int number);
+
+// Maze
+void path(int currX, int currY);
+void drawMaze();
+
+// Text
+void twrite(char* text, int x, int y, int size, int COLOUR, int typeDuration);
 
 
-};
+#define MAZE_SIZE 10
+int maze[MAZE_SIZE][MAZE_SIZE];
 
-//////////////////////////////////////////
-char letter[26][5][3] =
+int dir[4][2];
+
+int main(void)
 {
+    *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
+    NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
+    NIOS2_WRITE_STATUS(1); // Enable Nios II to accept interrupts.
 
-//a
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {1, 0, 1}
-},
+    animationRadius = sqrt((240 * 240) + (240 * 240)) ;
+    frame ++;
 
-//b
-{
-    {0, 0, 0},
-    {1, 1, 0},
-    {1, 1, 0},
-    {1, 0, 1},
-    {1, 1, 1}
-},
+    // Clear buffers.
+    // Place front buffer at the back, wait for swap.
+    *(pixel_ctrl_ptr + 1) = (int) &Buffer1;
+    wait_for_vsync();
+    // Now clear both buffers.
+	pixel_buffer_start = *pixel_ctrl_ptr;
+    clear_screen(BLACK);
+    // Place back buffer at the back.
+	*(pixel_ctrl_ptr + 1) = (int) &Buffer2;
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1);
+    clear_screen(BLACK);
 
-//c
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 0, 0},
-    {1, 0, 0},
-    {1, 1, 1}
-},
+    // Generate random seed.
+    srand(2444);
 
-//d
-{
-    {0, 0, 0},
-    {1, 1, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 0}
-},
+    // Init food.
+    bool foodFound = true;
+    int foodX = 0;
+    int foodY = 0;
 
-//e
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 1, 0},
-    {1, 0, 0},
-    {1, 1, 1}
-},
+    // Store last two previous frame information.
+    struct cell prev_snake     [MAX_SNAKE_LENGTH];
+    struct cell prev_snake_two [MAX_SNAKE_LENGTH];
 
-//f
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 1, 0},
-    {1, 0, 0},
-    {1, 0, 0}
-},
+    // Start with 1 block snake by default.
+    snakeLength = STARTING_LENGTH;
 
-//g
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 0, 0},
-    {1, 0, 1},
-    {1, 1, 1}
-},
+    // Set snake colour based on fruit.
+    for (int i = 0; i < snakeLength; ++i) { snake[i].colour = fruit_color[fruitIdx]; }
 
-//h
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {1, 0, 1}
-},
+    // Border animation on front buffer.
+    pixel_buffer_start = *(pixel_ctrl_ptr);
+    drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 10000);
+    pixel_buffer_start = *(pixel_ctrl_ptr + 1);
 
-//i
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {0, 1, 0},
-    {0, 1, 0},
-    {1, 1, 1}
-},
-
-//j
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {0, 1, 0},
-    {0, 1, 0},
-    {1, 1, 0}
-},
-
-//k
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 1, 0},
-    {1, 0, 1},
-    {1, 0, 1}
-},
-
-//l
-{
-    {0, 0, 0},
-    {1, 0, 0},
-    {1, 0, 0},
-    {1, 0, 0},
-    {1, 1, 1}
-},
-
-//m
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 0, 1}
-},
-
-//n
-{
-    {0, 0, 0},
-    {1, 1, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 0, 1}
-},
-
-// o
-{
-    {0, 0, 0},
-    {0, 1, 1},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 0}
-},
-
-// -
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {1, 0, 0}
-},
-
-// q
-{
-    {0, 0, 0},
-    {0, 1, 0},
-    {1, 0, 1},
-    {1, 1, 0},
-    {0, 1, 1}
-},
-
-// r
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {1, 0, 1},
-    {1, 1, 0},
-    {1, 0, 1}
-},
-
-// s
-{
-    {0, 0, 0},
-    {0, 1, 1},
-    {1, 0, 0},
-    {0, 0, 1},
-    {1, 1, 0}
-},
-
-// t
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {0, 1, 0},
-    {0, 1, 0},
-    {0, 1, 0}
-},
-
-// u
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {0, 1, 1}
-},
-
-// v
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {0, 1, 0}
-},
-
-// w
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 0, 1},
-    {1, 1, 1},
-    {1, 1, 1}
-},
-
-// x
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {0, 1, 0},
-    {1, 0, 1},
-    {1, 0, 1}
-},
-
-// y
-{
-    {0, 0, 0},
-    {1, 0, 1},
-    {1, 1, 1},
-    {0, 0, 1},
-    {1, 1, 1}
-},
-
-// z
-{
-    {0, 0, 0},
-    {1, 1, 1},
-    {0, 0, 1},
-    {1, 0, 0},
-    {1, 1, 1}
-}
-
-};
-////////////////////////////////////////////////////////////////////
-void input()
-{
-    unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
-    int previousKey = byte2;
-    int PS2_data, RVALID;
-
-    // Handle key input via polling.
-
-    PS2_data = *(pPS2);           // read the Data register in the PS/2 port
-    RVALID = (PS2_data & 0x8000); // extract the RVALID field
-
-    if (RVALID != 0)
+    // Game loop.
+    while (TRUE)
     {
-        byte3 = PS2_data & 0xFF;
-    }
 
-    if (byte3 == BREAK)
-    {
-        acceptInput = TRUE; // Wait for a break before accepting input.
-    }
-    else if (byte3 == LEFT_KEY && acceptInput)
-    {
-        acceptInput = FALSE;
+        // Store
+        // Clear
+        // Update / Draw
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////// STORE
+        // Store last two frames for double buffering.
+		for (int i = 0; i < snakeLength; i++)
+		{
+            // Prev Frame 2 <-- Prev Frame 1
+            prev_snake_two[i].x      = prev_snake[i].x;
+            prev_snake_two[i].y      = prev_snake[i].y;
+            prev_snake_two[i].active = prev_snake[i].active;
+            prev_snake_two[i].dirX   = prev_snake[i].dirX;
+            prev_snake_two[i].dirY   = prev_snake[i].dirY;
 
-        // printf("LEFT KEY\n");
+            // Prev Frame 1 <-- Current Frame
+            prev_snake[i].x      = snake[i].x;
+            prev_snake[i].y      = snake[i].y;
+            prev_snake[i].active = snake[i].active;
+            prev_snake[i].dirX   = snake[i].dirX;
+            prev_snake[i].dirY   = snake[i].dirY;
+		}
+        ///////////////////////////////////////////////////////////////////////////////////////// STORE
 
-        dirX = -1;
-        dirY = 0;
-    }
-    else if (byte3 == RIGHT_KEY && acceptInput)
-    {
-        acceptInput = FALSE;
-
-
-        // printf("RIGHT KEY\n");
-
-        dirX = 1;
-        dirY = 0;
-    }
-    else if (byte3 == UP_KEY && acceptInput)
-    {
-        acceptInput = FALSE;
-
-
-        // printf("UP KEY\n");
-
-        dirX = 0; // Set direction
-        dirY = -1;
-    }
-    else if (byte3 == DOWN_KEY && acceptInput)
-    {
-        acceptInput = FALSE;
-
-
-        // printf("DOWN KEY\n");
-
-        dirX = 0;
-        dirY = 1;
-    }
-}
-
-void delay(int duration)
-{
-    while (duration > 0)
-    {
-        duration--;
-    }
-}
-
-void wait_for_vsync()
-{
-    *pixel_ctrl_ptr = 1;
-    int status = *(pixel_ctrl_ptr + 3);
-
-    while ((status & 0x01) != 0){ status = *(pixel_ctrl_ptr + 3); }
-}
-
-void clear_screen(const int COLOUR)
-{
-    volatile short int *one_pixel_address;
-
-    for (int y = 0; y < HEIGHT; ++y)
-    {
-        for (int x = 0; x < WIDTH; ++x)
+        ///////////////////////////////////////////////////////////////////////////////////////// CLEAR
+        // Clear current frame (information from penultimate frame)
+        for (int i = 0; i < snakeLength; i++)
         {
-            one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
-            *one_pixel_address = COLOUR;
+            drawBox(prev_snake_two[i].x, prev_snake_two[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
         }
+        ////////////////////////////////////////////////////////////////////////////////////// CLEAR
+
+        // Draw Center Mark
+        plot_pixel(CENTER_X, CENTER_Y, WHITE);
+
+        // Draw game border.
+        drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
+
+        // Plot food item.
+        if (foodFound)
+        {
+            foodFound = false;
+            // Generate new food position.
+            foodX = rand() % (RANDOM_RANGE + 1);
+            foodY = 0;
+            // Generate new food.
+            fruitIdx = rand() % 5;
+        }
+
+        // Draw food.
+        drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
+
+        // Poll for input.
+        // input();
+        // printf("X: %d   Y: %d \n", headX, headY);
+
+        // Boundary checks.
+        if (headX + dirX < 0 || headX + dirX > GAME_WIDTH){ dirX = 0;}
+        if (headY + dirY < 0 || headY + dirY > GAME_WIDTH){ dirY = 0;}
+
+        // Move head
+        headX += dirX;
+        headY += dirY;
+
+        // Store head position and direction.
+        snake[0].x    = headX;
+        snake[0].y    = headY;
+        snake[0].dirX = dirX;
+        snake[0].dirY = dirY;
+
+        // Check for body intersection.
+        // Avoid snake from collapsing into itself.
+
+        // Should i = 2?
+        //   for (int i = 2; i < snakeLength; i++)
+        // {
+
+        //   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
+        // {
+        //   while(true)
+        // {
+        // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
+        //}
+        //}
+        //}
+
+        // Update positions of the rest of snake body.
+        if (dirX != 0 || dirY != 0)
+        {
+            for (int i = snakeLength - 1; i > 0; --i)
+            {
+                snake[i].x    = snake[i - 1].x;    // Position
+                snake[i].y    = snake[i - 1].y;
+
+                snake[i].dirX = snake[i - 1].dirX; // Direction
+                snake[i].dirY = snake[i - 1].dirY;
+            }
+        }
+
+        // Draw snake
+        for (int i = 0; i < snakeLength; i++){ drawBox(snake[i].x, snake[i].y, SCALE, WHITE, TOP_LEFT_X, TOP_LEFT_Y); }
+
+         // Colliding with food.
+        if (headX == foodX && headY == foodY)
+        {
+            showAnimation = true;
+
+            foodFound = true;
+
+            // animationX = headX;
+            // animationY = headY;
+
+            // Increase snake length.
+            snakeLength++;
+            snake[snakeLength - 1].active = TRUE; // Set cell to active.
+            snake[snakeLength - 1].colour = fruit_color[fruitIdx];
+
+            // Clear score text.
+            char* text;
+            sprintf(text, "%d", score);
+			twrite(text, 0, 0, 3, BLACK, 0);
+
+            // Update score.
+            score = snakeLength - 1;
+
+            // Display score on HEX displays and LEDs.
+            *pLED = score;
+            displayHex(score);
+
+			sprintf(text, "%d", score);
+			twrite(text, 0, 0, 3, WHITE, 0);
+        }
+
+
+        // // Clear snake.
+        // for (int i = 0; i < snakeLength; i++)
+        // {
+        //     drawBox(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
+        // }
+
+        // Clear current food.
+        clearFruit(foodX, foodY+offsetEven, SCALE, CLEAR);
+        offsetOdd  = !offsetOdd;
+        offsetEven = !offsetEven;
+
+
+        // Delay.
+        // for (int i = 0; i < 1000000; ++i);
+
+        // Wait for buffer swap to set write buffer.
+        wait_for_vsync();
+		pixel_buffer_start = *(pixel_ctrl_ptr + 1);
     }
 }
+
+
+// PS2 Interrupts // in the DE1-SOC docs
+// Maze Generation
+// Scaling -- DONE ?
+// Double buffering
+// Better random number generation
+// Build border -- DONE.
+// Border waves.
+// Maze generation.
+// Rotation (rotate game 90 deg every X seconds).
+// Check if read FIFO is full. -- DONE.
+// Boss Mode.
+// Invert mode.
+// Translate board.
+// Platformer
+// Left Shift Back Register for random number generation.
+// LED score counter
+// Settings
+// Audio
+// Sprite Animation?
+// Floor animation
+// Random Seeding with Switches?
+
+///////////////////////////////////////////////////////////////////////////////////////////////// MISC SNIPPETS
+
+// Mouse.
+// if ( (byte2 == 0xAA) && (byte3 == 0x00) )
+// {
+// *(PS2_ptr) = 0xF4;
+// }
+
+
+
+    // DRAW SNAKE SPRITES
+    // for (int i = 0; i < snakeLength; i++)
+    // {
+    //     if (i == 0 || i == 1)
+    //     {
+    //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
+
+    //     }
+    //     else if (i%2 ==0){
+    //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
+    //     }
+    //     else{
+    //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
+    //     }
+
+    // }
+
+
+
+
+int dir[4][2] =
+{
+        {0, -1}, // North
+        {1, 0},  // East
+        {0, 1},  // South
+        {-1, 0}  // West
+};
+
+// void input()
+// {
+//     unsigned char byte1 = 0, byte2 = 0, byte3 = 0;
+//     int previousKey = byte2;
+//     int PS2_data, RVALID;
+
+//     // Handle key input via polling.
+
+//     PS2_data = *(pPS2);           // read the Data register in the PS/2 port
+//     RVALID = (PS2_data & 0x8000); // extract the RVALID field
+
+//     if (RVALID != 0)
+//     {
+//         byte3 = PS2_data & 0xFF;
+//     }
+
+//     if (byte3 == BREAK)
+//     {
+//         acceptInput = TRUE; // Wait for a break before accepting input.
+//     }
+//     else if (byte3 == LEFT_KEY && acceptInput)
+//     {
+//         acceptInput = FALSE;
+
+
+//         // printf("LEFT KEY\n");
+
+//         dirX = -1;
+//         dirY = 0;
+//     }
+//     else if (byte3 == RIGHT_KEY && acceptInput)
+//     {
+//         acceptInput = FALSE;
+
+
+//         // printf("RIGHT KEY\n");
+
+//         dirX = 1;
+//         dirY = 0;
+//     }
+//     else if (byte3 == UP_KEY && acceptInput)
+//     {
+//         acceptInput = FALSE;
+
+
+//         // printf("UP KEY\n");
+
+//         dirX = 0; // Set direction
+//         dirY = -1;
+//     }
+//     else if (byte3 == DOWN_KEY && acceptInput)
+//     {
+//         acceptInput = FALSE;
+
+
+//         // printf("DOWN KEY\n");
+
+//         dirX = 0;
+//         dirY = 1;
+//     }
+// }
+
+// Check if READ FIFO is empty.
+bool isReadEmpty()
+{
+    return ((*(pPS2) & 0xFFFF0000) == 0);
+}
+
+void displayHex(int number)
+{
+    // Max number exceeded.
+    if (number > 999999){ return; }
+
+    int offsetSeg0 = 0;
+    int offsetSeg1 = 0;
+
+    int hexDataSeg0 = 0;
+    int hexDataSeg1 = 0;
+
+    int hexDigit = 0;
+    int digit = 0;
+
+    while (number > 0)
+    {
+        digit = number % 10;
+
+             if (digit == 0){ hexDigit = HEX_ZERO; }
+        else if (digit == 1){ hexDigit = HEX_ONE; }
+        else if (digit == 2){ hexDigit = HEX_TWO; }
+        else if (digit == 3){ hexDigit = HEX_THREE; }
+        else if (digit == 4){ hexDigit = HEX_FOUR; }
+        else if (digit == 5){ hexDigit = HEX_FIVE;}
+        else if (digit == 6){ hexDigit = HEX_SIX; }
+        else if (digit == 7){ hexDigit = HEX_SEVEN; }
+        else if (digit == 8){ hexDigit = HEX_EIGHT; }
+        else if (digit == 9){ hexDigit = HEX_NINE; }
+
+        // Max 6 digits (6 hex displays)
+        // ADDR_7SEG1, ADDR_7SEG1, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0
+        // First 2 on ADDR_7SEG1, Last 4 on ADDR_7SEG0
+        if (offsetSeg0 > 3)
+        {
+            hexDataSeg1 += hexDigit << (8 * offsetSeg1);
+            offsetSeg1++;
+        }
+        else
+        {
+            hexDataSeg0 += hexDigit << (8 * offsetSeg0);
+            *ADDR_7SEG0 = hexDataSeg0;
+            offsetSeg0++;
+        }
+
+        number /= 10;
+    }
+
+    // Write to hex displays.
+    *ADDR_7SEG0 = hexDataSeg0; // HEX2 - HEX0
+    *ADDR_7SEG1 = hexDataSeg1; // HEX5 - HEX3
+}
+
 
 void plot_pixel(int x, int y, short int line_color)
 {
@@ -685,7 +762,7 @@ void plot_pixel_delay(int x, int y, short int line_color, int delay)
     }
 }
 
-void boxBuilder(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y)
+void drawBox(int startX, int startY, const int LENGTH, const int COLOUR, int OFFSET_X, int OFFSET_Y)
 {
     // Draw a (LENGTH x LENGTH) Box.
     for (int j = 0; j < LENGTH; ++j)
@@ -849,7 +926,7 @@ void clearFruit(int startX, int startY, const int LENGTH, int color)
     }
 }
 
-void borderBuilder(int startX, int startY, const int LENGTH, const int COLOUR, const int delay)
+void drawBorder(int startX, int startY, const int LENGTH, const int COLOUR, const int delay)
 {
     // Draw a (LENGTH x LENGTH) outline.
 
@@ -878,129 +955,6 @@ void borderBuilder(int startX, int startY, const int LENGTH, const int COLOUR, c
     }
 }
 
-// Check if READ FIFO is empty.
-bool isReadEmpty()
-{
-    return ((*(pPS2) & 0xFFFF0000) == 0);
-}
-
-void displayHex(int number)
-{
-    // Max exceeded.
-    if (number > 999999)
-    {
-        return;
-    }
-
-    int offsetSeg0 = 0;
-    int offsetSeg1 = 0;
-
-    int hexDataSeg0 = 0;
-    int hexDataSeg1 = 0;
-
-    int hexDigit = 0;
-    int digit = 0;
-
-    while (number > 0)
-    {
-        digit = number % 10;
-
-        printf("%d\n", digit);
-
-        if (digit == 0)
-        {
-            hexDigit = HEX_ZERO;
-        }
-        else if (digit == 1)
-        {
-            hexDigit = HEX_ONE;
-        }
-        else if (digit == 2)
-        {
-            hexDigit = HEX_TWO;
-        }
-        else if (digit == 3)
-        {
-            hexDigit = HEX_THREE;
-        }
-        else if (digit == 4)
-        {
-            hexDigit = HEX_FOUR;
-        }
-        else if (digit == 5)
-        {
-            hexDigit = HEX_FIVE;
-        }
-        else if (digit == 6)
-        {
-            hexDigit = HEX_SIX;
-        }
-        else if (digit == 7)
-        {
-            hexDigit = HEX_SEVEN;
-        }
-        else if (digit == 8)
-        {
-            hexDigit = HEX_EIGHT;
-        }
-        else if (digit == 9)
-        {
-            hexDigit = HEX_NINE;
-        }
-
-        // Max 6 digits (6 hex displays)
-        // ADDR_7SEG1, ADDR_7SEG1, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0, ADDR_7SEG0
-        // First 2 on ADDR_7SEG1, Last 4 on ADDR_7SEG0
-        if (offsetSeg0 > 3)
-        {
-            hexDataSeg1 += hexDigit << (8 * offsetSeg1);
-            offsetSeg1++;
-        }
-        else
-        {
-            hexDataSeg0 += hexDigit << (8 * offsetSeg0);
-            *ADDR_7SEG0 = hexDataSeg0;
-            // while(true) {}
-
-            offsetSeg0++;
-        }
-
-        number /= 10;
-    }
-
-    // Write to hex displays.
-    *ADDR_7SEG0 = hexDataSeg0; // HEX2 - HEX0
-    *ADDR_7SEG1 = hexDataSeg1; // HEX5 - HEX3
-
-    // hexDataSeg1 += HEX_EMPTY << (8 * offsetSeg1);
-    // printf("%d \n", number);
-}
-
-// struct mazeCell  =
-// {
-//     bool UP = false;
-//     bool DOWN = false;
-//     bool RIGHT = false;
-//     bool LEFT = false;
-// }
-
-#define MAZE_SIZE 10
-
-int maze[MAZE_SIZE][MAZE_SIZE];
-
-// {x,y}
-int dir[4][2] =
-    {
-        {0, -1}, // North
-        {1, 0},  // East
-        {0, 1},  // South
-        {-1, 0}  // West
-};
-
-const int UP = 0;
-const int RIGHT = 1;
-const int DOWN = 2;
-const int LEFT = 3;
 
 void swap(int *x, int *y)
 {
@@ -1009,7 +963,7 @@ void swap(int *x, int *y)
     *y = temp;
 }
 
-void draw_line(int x0, int y0, int x1, int y1, int line_color)
+void drawLine(int x0, int y0, int x1, int y1, int line_color)
 {
     int is_steep = (int)abs(y1 - y0) > (int)abs(x1 - x0);
 
@@ -1091,7 +1045,7 @@ void path(int currX, int currY)
             // Current cell has been visited.
             maze[currY][currX] = 1;
 
-            draw_line(currX * 2, currY * 2, newX * 2, newY * 2, WHITE);
+            drawLine(currX * 2, currY * 2, newX * 2, newY * 2, WHITE);
 
             // plot_pixel(newX * 2, newY * 2, WHITE);
             printf("%d, %d \n", newX, newY);
@@ -1182,14 +1136,14 @@ void twrite(char* text, int x, int y, int size, int COLOUR, int typeDuration)
                 {
                     if (letter[text[i] - 'a'][j][k] == 1)
                     {
-                        boxBuilder(x + k, y + j, size, COLOUR, 0, 0);
+                        drawBox(x + k, y + j, size, COLOUR, 0, 0);
                     }
                 }
                 else if ('0' <= text[i] && text[i] <= '9')
                 {
                     if (number[text[i] - '0'][j][k] == 1)
                     {
-                        boxBuilder(x + k, y + j, size, COLOUR, 0, 0);
+                        drawBox(x + k, y + j, size, COLOUR, 0, 0);
                     }
                 }
 
@@ -1207,259 +1161,494 @@ void twrite(char* text, int x, int y, int size, int COLOUR, int typeDuration)
 	}
 }
 
-int main(void)
+void clear_screen(const int COLOUR)
 {
+    volatile short int *one_pixel_address;
 
-    animationRadius = sqrt((240 * 240) + (240 * 240)) ;
-    frame ++;
-
-    // Clear buffers.
-    // Place front buffer at the back, wait for swap.
-    *(pixel_ctrl_ptr + 1) = (int) &Buffer1;
-    wait_for_vsync();
-    // Now clear both buffers.
-	pixel_buffer_start = *pixel_ctrl_ptr;
-    clear_screen(BLACK);
-    // Place back buffer at the back.
-	*(pixel_ctrl_ptr + 1) = (int) &Buffer2;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1);
-    clear_screen(BLACK);
-
-    // Generate random seed.
-    srand(2444);
-
-    // Init food.
-    bool foodFound = true;
-    int foodX = 0;
-    int foodY = 0;
-
-    // Store last two previous frame information.
-    struct cell prev_snake     [MAX_SNAKE_LENGTH];
-    struct cell prev_snake_two [MAX_SNAKE_LENGTH];
-
-    // Start with 1 block snake by default
-    // (adjust STARTING_LENGTH for debugging).
-    snakeLength = STARTING_LENGTH;
-    for (int i = 0; i < snakeLength; ++i)
+    for (int y = 0; y < HEIGHT; ++y)
     {
-        snake[i].colour = fruit_color[fruitIdx];
-    }
-
-    // Game loop.
-    while (TRUE)
-    {
-
-        // Store
-        // Clear
-        // Update / Draw
-
-        ///////////////////////////////////////////////////// STORE
-        // Store last two frames for double buffering.
-		for (int i = 0; i < snakeLength; i++)
-		{
-            // Prev Frame 2 <-- Prev Frame 1
-            prev_snake_two[i].x      = prev_snake[i].x;
-            prev_snake_two[i].y      = prev_snake[i].y;
-            prev_snake_two[i].active = prev_snake[i].active;
-            prev_snake_two[i].dirX   = prev_snake[i].dirX;
-            prev_snake_two[i].dirY   = prev_snake[i].dirY;
-
-            // Prev Frame 1 <-- Current Frame
-            prev_snake[i].x      = snake[i].x;
-            prev_snake[i].y      = snake[i].y;
-            prev_snake[i].active = snake[i].active;
-            prev_snake[i].dirX   = snake[i].dirX;
-            prev_snake[i].dirY   = snake[i].dirY;
-		}
-        ///////////////////////////////////////////////////// STORE
-
-        ///////////////////////////////////////////////////// CLEAR
-        // Clear current frame (information from penultimate frame)
-        for (int i = 0; i < snakeLength; i++)
+        for (int x = 0; x < WIDTH; ++x)
         {
-            boxBuilder(prev_snake_two[i].x, prev_snake_two[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
+            one_pixel_address = pixel_buffer_start + (y << 10) + (x << 1); // Do not cast.
+            *one_pixel_address = COLOUR;
         }
-        ///////////////////////////////////////////////////// CLEAR
-
-        // Draw Center Mark
-        plot_pixel(CENTER_X, CENTER_Y, WHITE);
-
-        // Draw game border.
-        borderBuilder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, RED, 0);
-
-        // Plot food item.
-        if (foodFound)
-        {
-            foodFound = false;
-            // Generate new food position.
-            foodX = rand() % (RANDOM_RANGE + 1);
-            foodY = 0;
-            // Generate new food.
-            fruitIdx = rand() % 5;
-        }
-        // Draw food.
-        drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
-
-        // Poll for input.
-        input();
-        // printf("X: %d   Y: %d \n", headX, headY);
-
-        // Boundary checks.
-        if (headX + dirX < 0 || headX + dirX > GAME_WIDTH){ dirX = 0;}
-        if (headY + dirY < 0 || headY + dirY > GAME_WIDTH){ dirY = 0;}
-
-        // Move head
-        headX += dirX;
-        headY += dirY;
-
-        // Store head position and direction.
-        snake[0].x    = headX;
-        snake[0].y    = headY;
-        snake[0].dirX = dirX;
-        snake[0].dirY = dirY;
-
-        // Check for body intersection.
-        // Avoid snake from collapsing into itself.
-
-        // Should i = 2?
-        //   for (int i = 2; i < snakeLength; i++)
-        // {
-
-        //   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
-        // {
-        //   while(true)
-        // {
-        // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
-        //}
-        //}
-        //}
-
-        // Update positions of the rest of snake body.
-        if (dirX != 0 || dirY != 0)
-        {
-            for (int i = snakeLength - 1; i > 0; --i)
-            {
-                snake[i].x    = snake[i - 1].x;    // Position
-                snake[i].y    = snake[i - 1].y;
-
-                snake[i].dirX = snake[i - 1].dirX; // Direction
-                snake[i].dirY = snake[i - 1].dirY;
-            }
-        }
-
-        // Draw snake
-        for (int i = 0; i < snakeLength; i++){ boxBuilder(snake[i].x, snake[i].y, SCALE, WHITE, TOP_LEFT_X, TOP_LEFT_Y); }
-
-         // Colliding with food.
-        if (headX == foodX && headY == foodY)
-        {
-            showAnimation = true;
-
-            foodFound = true;
-
-            // animationX = headX;
-            // animationY = headY;
-
-            // Increase snake length.
-            snakeLength++;
-            snake[snakeLength - 1].active = TRUE; // Set cell to active.
-            snake[snakeLength - 1].colour = fruit_color[fruitIdx];
-
-            // Clear score text.
-            char* text;
-            sprintf(text, "%d", score);
-			twrite(text, 0, 0, 3, BLACK, 0);
-
-            // Update score.
-            score = snakeLength - 1;
-
-            // Display score on HEX displays and LEDs.
-            *pLED = score;
-            displayHex(score);
-
-			sprintf(text, "%d", score);
-			twrite(text, 0, 0, 3, WHITE, 0);
-        }
-
-
-        // // Clear snake.
-        // for (int i = 0; i < snakeLength; i++)
-        // {
-        //     boxBuilder(snake[i].x, snake[i].y, SCALE, CLEAR, TOP_LEFT_X, TOP_LEFT_Y);
-        // }
-
-        // Clear current food.
-        clearFruit(foodX, foodY+offsetEven, SCALE, CLEAR);
-        offsetOdd  = !offsetOdd;
-        offsetEven = !offsetEven;
-
-
-        // Delay.
-        // for (int i = 0; i < 1000000; ++i);
-
-        // Wait for buffer swap to set write buffer.
-        wait_for_vsync();
-		pixel_buffer_start = *(pixel_ctrl_ptr + 1);
     }
 }
 
+void wait_for_vsync()
+{
+    *pixel_ctrl_ptr = 1;
+    int status = *(pixel_ctrl_ptr + 3);
+    while ((status & 0x01) != 0){ status = *(pixel_ctrl_ptr + 3); }
+}
+
+char letter[26][5][3] =
+{
+    //a
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {1, 0, 1}
+    },
+
+    //b
+    {
+        {0, 0, 0},
+        {1, 1, 0},
+        {1, 1, 0},
+        {1, 0, 1},
+        {1, 1, 1}
+    },
+
+    //c
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 0, 0},
+        {1, 0, 0},
+        {1, 1, 1}
+    },
+
+    //d
+    {
+        {0, 0, 0},
+        {1, 1, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 0}
+    },
+
+    //e
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 1, 0},
+        {1, 0, 0},
+        {1, 1, 1}
+    },
+
+    //f
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 1, 0},
+        {1, 0, 0},
+        {1, 0, 0}
+    },
+
+    //g
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 0, 0},
+        {1, 0, 1},
+        {1, 1, 1}
+    },
+
+    //h
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {1, 0, 1}
+    },
+
+    //i
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 1, 0},
+        {0, 1, 0},
+        {1, 1, 1}
+    },
+
+    //j
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 1, 0},
+        {0, 1, 0},
+        {1, 1, 0}
+    },
+
+    //k
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 1, 0},
+        {1, 0, 1},
+        {1, 0, 1}
+    },
+
+    //l
+    {
+        {0, 0, 0},
+        {1, 0, 0},
+        {1, 0, 0},
+        {1, 0, 0},
+        {1, 1, 1}
+    },
+
+    //m
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 1, 1},
+        {1, 0, 1},
+        {1, 0, 1}
+    },
+
+    //n
+    {
+        {0, 0, 0},
+        {1, 1, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 0, 1}
+    },
+
+    // o
+    {
+        {0, 0, 0},
+        {0, 1, 1},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 0}
+    },
+
+    // -
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {1, 0, 0}
+    },
+
+    // q
+    {
+        {0, 0, 0},
+        {0, 1, 0},
+        {1, 0, 1},
+        {1, 1, 0},
+        {0, 1, 1}
+    },
+
+    // r
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {1, 0, 1},
+        {1, 1, 0},
+        {1, 0, 1}
+    },
+
+    // s
+    {
+        {0, 0, 0},
+        {0, 1, 1},
+        {1, 0, 0},
+        {0, 0, 1},
+        {1, 1, 0}
+    },
+
+    // t
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 1, 0},
+        {0, 1, 0},
+        {0, 1, 0}
+    },
+
+    // u
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {0, 1, 1}
+    },
+
+    // v
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {0, 1, 0}
+    },
+
+    // w
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 0, 1},
+        {1, 1, 1},
+        {1, 1, 1}
+    },
+
+    // x
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {0, 1, 0},
+        {1, 0, 1},
+        {1, 0, 1}
+    },
+
+    // y
+    {
+        {0, 0, 0},
+        {1, 0, 1},
+        {1, 1, 1},
+        {0, 0, 1},
+        {1, 1, 1}
+    },
+
+    // z
+    {
+        {0, 0, 0},
+        {1, 1, 1},
+        {0, 0, 1},
+        {1, 0, 0},
+        {1, 1, 1}
+    }
+};
+
+char number[10][5][3] =
+{
+//0
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//1
+{
+    {1, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0},
+    {1, 1, 1}
+},
+//2
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 1, 1}
+},
+//3
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1}
+},
+//4
+{
+    {1, 0, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+},
+//5
+{
+    {1, 1, 1},
+    {1, 0, 0},
+    {1, 1, 1},
+    {0, 0, 1},
+    {1, 1, 1}
+},
+//6
+{
+    {1, 0, 0},
+    {1, 0, 0},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//7
+{
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+},
+//8
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1}
+},
+//9
+{
+    {1, 1, 1},
+    {1, 0, 1},
+    {1, 1, 1},
+    {0, 0, 1},
+    {0, 0, 1}
+}
+
+
+};
+
+unsigned int fruits[5][9][9] =
+{
+    {
+        {0x0262, 0x0262, 0xBB01, 0xFBE0, 0x2589, 0xFBE0, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0xBB01, 0xFBE0, 0x2589, 0x2589, 0x2589, 0xFBE0, 0x0262, 0x0262},
+        {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0x2589, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262},
+        {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
+        {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
+        {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0xFBE0, 0x0262},
+        {0x0262, 0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0xBB01, 0xBB01, 0xFBE0, 0xFBE0, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+    },
+    {
+        {0x1C27, 0xF720, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+        {0x1C27, 0xF720, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+        {0x1C27, 0xF720, 0xE8E4, 0x0000, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262},
+        {0x1C27, 0xF720, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262 },
+        {0x1C27, 0xF720, 0xE8E4, 0x0000, 0xE8E4, 0x0000, 0xE8E4, 0x0262, 0x0262},
+        {0x1C27, 0xF720, 0xF720, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262},
+        {0x0262, 0x2589, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262},
+        {0x0262, 0x0262, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x2589, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+
+    },
+    {
+        {0x0262, 0x0262, 0x1345, 0x1C27, 0x1C27, 0x1C27, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0xC0A3, 0x1345, 0xE8E4, 0xE8E4, 0x1C27, 0xE8E4, 0x0262, 0x0262},
+        {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262},
+        {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xFD16, 0xE8E4, 0xE8E4, 0x0262},
+        {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xFD16, 0xE8E4, 0x0262, 0x0262},
+        {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0xC0A3, 0xE8E4, 0x0262, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+    },
+    {
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x9AC7, 0x9AC7, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0x0262 },
+        {0x0262, 0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0xF720, 0xF720, 0xBD40, 0xBD40, 0x0262, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+    },
+    {
+        {0x0262, 0x0262, 0x0262, 0x9AC7, 0x0262, 0x2589, 0x0262, 0x0262, 0x0262 },
+        {0x0262, 0x8846, 0x7825, 0x9AC7, 0x2589, 0x7825, 0xB889, 0x0262, 0x0262},
+        {0x8846, 0x8846, 0x9806, 0xB889, 0xB889, 0x8846, 0x9806, 0x9806, 0x0262},
+        {0x8846, 0x9806, 0x9806, 0x9806, 0x9806, 0x9806, 0xF1AE, 0x9806, 0x0262},
+        {0x8846, 0x9806, 0x9806, 0x9806, 0x9806, 0xF1AE, 0xF1AE, 0x9806, 0x0262},
+        {0x8846, 0x8846, 0x9806, 0x9806, 0x9806, 0xF1AE, 0xF1AE, 0x9806, 0x0262},
+        {0x0262, 0x8846, 0x7825, 0x7825, 0x9806, 0x9806, 0x9806, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x7825, 0x7825, 0x7825, 0x7825, 0x0262, 0x0262, 0x0262},
+        {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262},
+    }
+};
 
 
 
 
 
+unsigned int fruit_color[5] =
+{
+     0xFBE0, 0x1C27,  0xE8E4, 0xF720, 0x9806
+};
+
+// int snake[MAX_SNAKE_LENGTH] = {0};
+/////////////////////////////////////// SPRITES
+
+unsigned int snake_body_red[9][9] =
+{
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, },
+    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
+    {0x0262, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
+    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
+    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+};
+
+unsigned int snake_head_red[9][9] =
+{
+     {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, },
+    {0x0262, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
+    {0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0841, 0x0841, 0xE8E4, },
+    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
+    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
+    {0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0000, 0x0841, 0xE8E4, },
+    {0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, },
+    {0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xE8E4, 0xE8E4, 0xE8E4, 0xE8E4, 0x0262, },
+    {0x0262, 0x0262, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0xC0A3, 0x0262, 0x0262, },
+};
 
 
+void PS2_ISR(void)
+{
+    printf("%x\n", *pPS2 & 0xFF);
 
+    unsigned char byte3 = 0;
 
+    int PS2_data = *(pPS2);           // read the Data register in the PS/2 port
+    int RVALID = (PS2_data & 0x8000); // extract the RVALID field
+                                        // Read to clear FIFO
+    if (RVALID != 0)
+    {
+        byte3 = PS2_data & 0xFF;
+    }
 
+    if (byte3 == BREAK)
+    {
+        printf("BREAK\n");
+    }
+    if (byte3 == LEFT_KEY)
+    {
+        dirX = -1;
+        dirY = 0;
 
+        printf("LEFT\n");
+    }
+    else if (byte3 == RIGHT_KEY)
+    {
 
-// PS2 Interrupts // in the DE1-SOC docs
-// Maze Generation
-// Scaling -- DONE ?
-// Double buffering
-// Better random number generation
-// Build border -- DONE.
-// Border waves.
-// Maze generation.
-// Rotation (rotate game 90 deg every X seconds).
-// Check if read FIFO is full. -- DONE.
-// Boss Mode.
-// Invert mode.
-// Translate board.
-// Platformer
-// Left Shift Back Register for random number generation.
-// LED score counter
-// Settings
-// Audio
-// Sprite Animation?
-// Floor animation
-// Random Seeding with Switches?
+        dirX = 1;
+        dirY = 0;
 
-/////////////////////////////////////////////////// MISC SNIPPETS
+        printf("RIGHT\n");
+    }
+    else if (byte3 == UP_KEY)
+    {
+        dirX = 0; // Set direction
+        dirY = -1;
 
-// Mouse.
-// if ( (byte2 == 0xAA) && (byte3 == 0x00) )
-// {
-// *(PS2_ptr) = 0xF4;
-// }
+        printf("UP\n");
+    }
+    else if (byte3 == DOWN_KEY)
+    {
+        dirX = 0;
+        dirY = 1;
+    }
 
-
-
-       // DRAW SNAKE SPRITES
-        // for (int i = 0; i < snakeLength; i++)
-        // {
-        //     if (i == 0 || i == 1)
-        //     {
-        //         drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0 , snake[i].colour);
-
-        //     }
-        //     else if (i%2 ==0){
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven , snake[i].colour);
-        //     }
-        //     else{
-        //         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd, snake[i].colour);
-        //     }
-
-        // }
+    return;
+}
