@@ -284,7 +284,7 @@ int exitY = 0;
 #define MAX_SNAKE_LENGTH GAME_WIDTH *GAME_WIDTH
 #define STARTING_LENGTH 2
 #define SCALE 9
-#define RANDOM_RANGE 5
+#define RANDOM_RANGE GAME_WIDTH
 
 // Center point
 #define CENTER_X  (int) WIDTH / 2
@@ -513,14 +513,14 @@ int main(void)
     prevFrame.explosionRadius = 0;
     prevFrameTwo.explosionRadius = 0;
 
-    generateMaze();
-    drawMaze();
+    // generateMaze();
+    // drawMaze();
 
-    headX = entryX;
-    headY = entryY;
+    headX = 0;
+    headY = 0;
 
-    snake[0].x = entryX;
-    snake[0].y = entryY;
+    snake[0].x = headX;
+    snake[0].y = headY;
 
     // Game loop.
     while (TRUE)
@@ -629,7 +629,7 @@ int main(void)
         }
 
 
-        drawMaze();
+        // drawMaze();
 
 
 
@@ -667,13 +667,13 @@ int main(void)
             foodFound = false;
             // Generate new food position.
             foodX = rand() % (RANDOM_RANGE + 1);
-            foodY = 0;
+            foodY = rand() % (RANDOM_RANGE + 1);
             // Generate new food.
             fruitIdx = rand() % 5;
         }
 
-        foodX = exitX;
-        foodY = exitY;
+        // foodX = exitX;
+        // foodY = exitY;
 
         // Draw food.
         drawFruit(foodX, foodY, SCALE, fruits[fruitIdx], offsetEven);
@@ -688,11 +688,12 @@ int main(void)
 
         printf("%d\n-- %d\n", headX + dirX, mazeData[headY][headX]);
 
-        if (mazeData[headY + dirY][headX + dirX] == 0 )
-        {
+        // if (mazeData[headY + dirY][headX + dirX] == 0 )
+        // {
 
-        }
-        else if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
+        // }
+        // else
+        if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
         {
             // Move head
             headX += dirX;
