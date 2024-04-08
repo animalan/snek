@@ -282,6 +282,17 @@ void the_exception(void)
 #define DARKGREEN 0x042a
 #define DARKPURPLE 0x792a
 #define DARKBLUE 0x216a
+#define LEMON 0xF720
+#define MANGO 0xFE01
+#define KIWI 0x4121
+#define GRAPE 0x2887
+#define CHERRY 0xB12A
+#define DRAGONFRUIT 0xF1AE
+#define TIMEFAST 0xB12A
+#define TIMESLOW 0x9EDD
+#define MAZE 0xF7BE
+
+
 
 int entryX = 0;
 int entryY = 0;
@@ -338,6 +349,7 @@ int level = 0;
 #define GAME_OVER 4
 #define GAME_PAUSE 5
 #define ACHIEVEMENTS_PAGE 6
+#define RESUME_PAGE 7
 
 // MAINMENU SELECTIONS
 #define START_GAME 0
@@ -365,6 +377,9 @@ int level = 0;
 #define ACHIEVEMENT_2_PAGE 1
 #define ACHIEVEMENT_3_PAGE 2
 
+//RESUME SELECTION
+#define RESUME 0
+#define RESTART 1
 
 //SETTINGS SELECTIONS
 #define SOUND 0
@@ -372,7 +387,7 @@ int level = 0;
 #define POWERUPS 2
 
 #define NUM_PARTICLES 100
-#define NUM_OF_FRUITS 8
+#define NUM_OF_FRUITS 17
 
 unsigned short start_screen[200][320];
 
@@ -410,6 +425,8 @@ int dirY = 0;
 int prevDirX = 0;
 int prevDirY = 0;
 
+bool mazeDrawFlag = false;
+
 
 
 int acceptInput = TRUE;
@@ -429,14 +446,19 @@ double animationY = 0;
 
 int menu_selection = START_GAME;
 int gameState = MAIN_MENU;
-int totalFoodEaten = ACHIEVEMENT_3_FOOD;
+int resume_selection = RESUME;
+int totalFoodEaten = 0;
 int totalPowerUpsEaten = 0;
 int totalMazeCompleted = 0;
 int totalGreyScaleModeCompleted = 0;
+bool mazeGenToggle = false;
 
 int achievements_selection = ACHIEVEMENT_1_PAGE;
 
 int settings_selection = 0;
+
+int prevHeadMazeX =0;
+int prevHeadMazeY =0;
 
 
 bool bobOffsetX = true;
@@ -472,9 +494,9 @@ char letter[26][5][3];
 char number[10][5][3];
 char misc[1][5][3];
 
-unsigned int fruits[8][9][9];
-unsigned int fruit_color[8];
-unsigned int fruit_grayscale[8];
+unsigned int fruits[17][9][9];
+unsigned int fruit_color[17];
+unsigned int fruit_grayscale[17];
 
 unsigned int snake_head_red[9][9];
 unsigned int snake_body_red[9][9];
@@ -538,7 +560,8 @@ void displayHex(int number);
 void path(int currX, int currY);
 void generateMaze();
 void drawMaze();
-
+void resetGame();
+void drawResumePage();
 // Text
 void twrite(char *text, int x, int y, int size, int COLOUR, int typeDuration, int offsetX, int offsetY);
 int progress = 0;
@@ -549,7 +572,7 @@ int mazeData[MAZE_SIZE * 2 + 1][MAZE_SIZE * 2 + 1];
 
 int dir[4][2];
 
-
+bool resumeFlag = false;
 struct frame
 {
     int explosionRadius;
@@ -22945,13 +22968,13 @@ char number[10][5][3] = {
 
 };
 
-unsigned int fruits[8][9][9] = {{
+unsigned int fruits[17][9][9] = {{
                                     // orange
                                     {0x0262, 0x0262, 0xBB01, 0xFBE0, 0x2589, 0xFBE0, 0x0262, 0x0262, 0x0262},
                                     {0x0262, 0xBB01, 0xFBE0, 0x2589, 0x2589, 0x2589, 0xFBE0, 0x0262, 0x0262},
                                     {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0x2589, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262},
                                     {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
-                                    {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
+                                {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0x0262},
                                     {0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xF58E, 0xFBE0, 0xFBE0, 0x0262},
                                     {0x0262, 0xBB01, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0xFBE0, 0x0262, 0x0262},
                                     {0x0262, 0x0262, 0xBB01, 0xBB01, 0xFBE0, 0xFBE0, 0x0262, 0x0262, 0x0262},
@@ -23045,11 +23068,126 @@ unsigned int fruits[8][9][9] = {{
                                     {0x0262, 0x4A49, 0x4A49, 0x4A49, 0x738E, 0x738E, 0x0262, 0x0262, 0x0262, },
                                     {0x0262, 0x0262, 0x0262, 0x4A49, 0x738E, 0x738E, 0x0262, 0x0262, 0x0262, },
                                     {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
-                                }
+                                },
+                                //LEMON
+                                 {
+                                {0x0262, 0x0262, 0x0262, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262, 0x0262, },
+                                {0x0262, 0xDE61, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262, 0x0262, },
+                                {0x0262, 0xDE61, 0xF720, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262, 0x0262, },
+                                {0x0262, 0xDE61, 0xF720, 0xF720, 0xF720, 0xF720, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0xDE61, 0xDE61, 0xDE61, 0xDE61, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                 },
 
-            };
+                                 //mango
+                                 {
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x2589, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0xCCC1, 0xCCC1, 0xFE01, 0xFE01, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0xCCC1, 0xFE01, 0xFE01, 0xFE01, 0xFF80, 0xFE01, 0x0262, 0x0262, },
+                                {0x0262, 0xCCC1, 0xFE01, 0xFE01, 0xFE01, 0xFF80, 0xFE01, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0xCCC1, 0xFE01, 0xFE01, 0xFE01, 0xFE01, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0xCCC1, 0xFE01, 0xFE01, 0xFE01, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0xCCC1, 0xFE01, 0xFE01, 0xFE01, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                 },
 
-unsigned int fruit_color[8] =
+                                 //kiwi
+                                 {
+                                 {0x0262, 0x0262, 0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x9AC7, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x2589, 0x2589, 0x9AC7, 0x0262, },
+                                {0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x2589, 0xAF23, 0xAF23, 0x2589, 0x9AC7, },
+                                {0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x2589, 0xAF23, 0xAF23, 0x2589, 0x9AC7, },
+                                {0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x2589, 0xAF23, 0xAF23, 0x2589, 0x9AC7, },
+                                {0x0262, 0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x2589, 0x2589, 0x9AC7, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x4121, 0x9AC7, 0x9AC7, 0x9AC7, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+                                },
+//grape
+                                {
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x4121, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x0262, },
+    {0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, },
+    {0x0262, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x0262, },
+    {0x0262, 0x0262, 0x2887, 0x6993, 0x2887, 0x6993, 0x2887, 0x6993, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x2887, 0x6993, 0x2887, 0x6993, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x6993, 0x2887, 0x6993, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x6993, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+},
+//cherry
+                                
+                                {
+    {0x7A01, 0x0262, 0x0262, 0x7A01, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x7A01, 0x0262, 0x0262, 0x7A01, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x7A01, 0x4823, 0xB12A, 0xB12A, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0xB12A, 0xB12A, 0xB12A, 0x4823, 0xB12A, 0xB12A, 0x0262, 0x0262, },
+    {0xB12A, 0xCBF1, 0xB12A, 0xB12A, 0xB12A, 0x4823, 0xB12A, 0x0262, 0x0262, },
+    {0xB12A, 0xCBF1, 0xB12A, 0xB12A, 0xB12A, 0x4823, 0xB12A, 0x0262, 0x0262, },
+    {0xB12A, 0xB12A, 0xB12A, 0xB12A, 0xB12A, 0x4823, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0xB12A, 0xB12A, 0xB12A, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+},
+
+//dragonFruit
+{
+    {0x0262, 0x0262, 0xB12A, 0xB12A, 0xF1AE, 0xF1AE, 0xF1AE, 0x0262, 0x0262, },
+    {0x0262, 0xB12A, 0xB12A, 0xEF5D, 0x0000, 0xF7BE, 0xF1AE, 0xF1AE, 0x0262, },
+    {0xB12A, 0xB12A, 0xEF5D, 0x0841, 0xF7BE, 0x0841, 0xF7BE, 0xF1AE, 0xF1AE, },
+    {0xB12A, 0xEF5D, 0x0841, 0xF7BE, 0x0841, 0xF7BE, 0x0841, 0xF7BE, 0xF1AE, },
+    {0xB12A, 0xB12A, 0xF7BE, 0x0841, 0xF7BE, 0x0841, 0xF7BE, 0xF1AE, 0xF1AE, },
+    {0x0262, 0xB12A, 0xB12A, 0xF7BE, 0x0841, 0xF7BE, 0xF1AE, 0xF1AE, 0x0262, },
+    {0x0262, 0x0262, 0xB12A, 0xB12A, 0xF1AE, 0xF1AE, 0xF1AE, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+},
+//timefast
+{
+    {0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, },
+    {0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, },
+    {0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, },
+    {0xB68B, 0xB68B, 0x0262, 0x0262, 0xB68B, 0xB68B, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+},
+//SNOWFLAKE
+{
+    {0x0262, 0x0262, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x9EDD, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x9EDD, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x9EDD, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+},
+//MAZE
+{
+    {0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0x0262, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0xF7BE, 0x0262, 0x0262, 0xF7BE, 0x0262, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0xF7BE, 0x0262, 0x0262, 0x0262, 0x0262, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0x0262, },
+    {0xF7BE, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+    {0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0xF7BE, 0x0262, },
+    {0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, 0x0262, },
+}
+
+
+};
+
+
+
+unsigned int fruit_color[17] =
 {
     ORANGE,
     GREEN,
@@ -23058,7 +23196,16 @@ unsigned int fruit_color[8] =
     PINK,
     PEACH,
     BLUE,
-    DARKGREY
+    DARKGREY,
+    LEMON,
+    MANGO,
+    KIWI,
+    GRAPE,
+    CHERRY,
+    DRAGONFRUIT,
+    TIMEFAST,
+    TIMESLOW,
+    MAZE
 };
 
 // int snake[MAX_SNAKE_LENGTH] = {0};
@@ -23498,7 +23645,15 @@ int main(void)
             
            // clearParticles();
         }
-       
+        else if (gameState == RESUME_PAGE){
+             if (clearbuff < 4){
+                    clear_screen(CLEAR);
+                    clearbuff++;
+                }
+          //  drawParticles();
+        
+            drawResumePage();
+        }
 
         else if (gameState == GAME_START){
              if (clearbuff < 4){
@@ -23757,47 +23912,72 @@ int main(void)
             {   
                 clear_screen(CLEAR);
                 drawMaze(BLUE, BLACK);
-                drawBox(entryX, entryY, SCALE, RED, TOP_LEFT_X, TOP_LEFT_Y);
                 mazeBuff++;
+            }
+
+            if (mazeMode)
+            {
+                drawBox(entryX, entryY, SCALE, RED, TOP_LEFT_X, TOP_LEFT_Y);
             }
 
             // Draw Center Mark
             plot_pixel(CENTER_X, CENTER_Y, WHITE);
-
+            
+            
+            
             // Plot food item.
             if (foodFound)
             {   
+                if (mazeMode) {
+                    mazeMode = false;
+                    mazeDrawFlag = true;
+                    clearbuff = 0;
+                    headX = foodX;
+                    headY = foodY;
+                    
+                }
                 grayScaleCount++;
 
                 if (grayScaleCount == 3) {grayscaleMode = false; grayScaleCount = 0;}
-             
-                // if (fruitIdx == 3)
-                // {
-                //     // clear_screen(CLEAR);
-                //     // printf("MAZEMODE.\n");
-                //     // mazeMode = true;
-                //     // generateMaze();
+                    
+                    if (fruitIdx == 16 || (score % 5 == 0 && score > 0))
+                    {
+                        mazeDrawFlag = false;
+                        mazeMode = true;
+                        clear_screen(CLEAR);
+                        printf("MAZEMODE.\n");
+                        prevHeadMazeX = headX;
+                        prevHeadMazeY = headY;
+                    
+                        generateMaze();
 
-                //     // headX = entryX;
-                //     // headY = entryY;
+                        headX = entryX;
+                        headY = entryY; 
 
-                //     // foodX = exitX;
-                //     // foodY = exitY;
+                        do
+                        {
+                            foodX = rand() % (MAZE_SIZE - 1);
+                            foodY = rand() % (MAZE_SIZE - 1);
+                        }while(mazeData[foodY][foodX] == 0);
+                        
 
-                //     // foodFound = false;
+                        foodFound = false;
 
-                //     // mazeBuff = 0;
-                // }
-                if (fruitIdx ==7) 
-                {
-                    grayscaleMode = true;
-                }
-                
-                // {
+                        mazeBuff = 0;
+                    }
+
+                    if (fruitIdx ==7 && greyScaleEnabled) 
+                    {
+                        grayscaleMode = true;
+                    }
+
                     foodFound = false;
                     // Generate new food position.
-                    foodX = rand() % (RANDOM_RANGE + 1);
-                    foodY = 0;
+                    if (!mazeMode)
+                    {
+                        foodX = rand() % (RANDOM_RANGE + 1);
+                        foodY = rand() % (RANDOM_RANGE + 1);                        
+                    }
 
                     // foodY = rand() % (RANDOM_RANGE + 1);
                     // Generate new food.
@@ -23808,7 +23988,6 @@ int main(void)
                     {
                         fruitIdx = rand() % NUM_OF_FRUITS;
                     }
-                // }
 
             }
 
@@ -23829,12 +24008,7 @@ int main(void)
 
 
             printf("%d %d\n", dirX, dirY);
-            
-            if (mazeMode && mazeData[headY + dirY][headX + dirX] == 0)
-            {
-                // printf("wall\n");
-            }
-            
+        
             
             if (!mazeMode)
             {
@@ -23850,8 +24024,13 @@ int main(void)
                     dirY *= -1;
                 }
             }
-            
-            if (headX + dirX < 0 || headX + dirX > GAME_WIDTH)
+
+                
+            if (mazeMode && mazeData[headY + dirY][headX + dirX] == 0)
+            {
+                // printf("wall\n");
+            }    
+            else if (headX + dirX < 0 || headX + dirX > GAME_WIDTH)
             {
                 // dirX = 0;
             }
@@ -23890,11 +24069,18 @@ int main(void)
                     // Should i = 2?
 
                 // Body intersection
-                for (int i = 3; i < snakeLength; i++)
+                if(!mazeMode)
                 {
-                    if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
+                    for (int i = 3; i < snakeLength; i++)
                     {
-                        gameState = GAME_OVER;
+                        if (snake[i].x == snake[0].x && snake[i].y == snake[0].y ) 
+                        {
+                            clearbuff = 0;
+                            gameState = GAME_OVER;
+                            resetGame();
+                            music_to_play(FAIL);
+                            resumeFlag = false;
+                        }
                     }
                 }
                 // }
@@ -23919,6 +24105,7 @@ int main(void)
             if (headX == foodX && headY == foodY)
             {
                 drawExplosion = true;
+                totalFoodEaten++;
                 music_to_play(EAT);
                 showAnimation = true;
 
@@ -23947,6 +24134,9 @@ int main(void)
                 currFrame.score = score;
                 // Display score on HEX displays and LEDs.
             }
+
+        
+
 
             //  // Draw snake
             // for (int i = 0; i < snakeLength; i++)
@@ -23991,6 +24181,11 @@ int main(void)
 
                     }
                 }
+            }
+
+            if (mazeMode && clearbuff < 4){
+                clear_screen(CLEAR);
+                clearbuff++;
             }
 
             *pLED = score;
@@ -24130,6 +24325,8 @@ void input()
     int previousKey = byte2;
     int PS2_data, RVALID;
 
+    
+
     // Handle key input via polling.
 
     PS2_data = *(pPS2);           // read the Data register in the PS/2 port
@@ -24150,33 +24347,26 @@ void input()
        
 
         
-        if  (gameState == GAME_START)
-        {
-            //  if (dirX != 1)
-            // {
-                dirX = -1;
-                dirY = 0;
-            // }
-        }
+    if  (gameState == GAME_START){
+            dirX = -1;
+            dirY = 0;
     }
+        }
     else if (byte3 == RIGHT_KEY && acceptInput)
     {
         acceptInput = FALSE;
        
 
         // printf("RIGHT KEY\n");
-        if  (gameState == GAME_START){
-            // if (dirX != -1)
-            // {
-                dirX = 1;
-                dirY = 0;
-            // }
-        }
+   
+        dirX = 1;
+        dirY = 0;
     }
     else if (byte3 == UP_KEY && acceptInput)
     {
          acceptInput = FALSE;
         
+       
         
         // Main menu handling
         if (gameState == MAIN_MENU)
@@ -24211,16 +24401,20 @@ void input()
                 achievements_selection = (achievements_selection - 1) % 3;
             }
         }
+        else if (gameState == RESUME_PAGE){
+            if (resume_selection == 0){
+                resume_selection = 1;
+            }
+            else{
+                resume_selection = 0;
+            }
+        }
        
         // printf("UP KEY\n");
         if (gameState == GAME_START)
-        {   
-            // No reverse
-            // if (dirY != 1)
-            // {
-                dirX = 0;
-                dirY = -1;
-            // }
+        {
+            dirX = 0;
+            dirY = -1;
         }
        
     }
@@ -24240,14 +24434,18 @@ void input()
             clearbuff = 0;
             achievements_selection = (achievements_selection + 1) % 3;
         }
-
+         else if (gameState == RESUME_PAGE){
+            if (resume_selection == 0){
+                resume_selection = 1;
+            }
+            else{
+                resume_selection = 0;
+            }
+        }
         
         if (gameState == GAME_START){
-            // if (dirY != -1)
-            // {
-                dirX = 0;
-                dirY = 1;                
-            // }
+            dirX = 0;
+            dirY = 1;
         }
 
     
@@ -24264,8 +24462,14 @@ void input()
         {
             if (menu_selection == 0)
             {
-                gameState = GAME_START;
+                if (resumeFlag == true){
+                    gameState = RESUME_PAGE;
+                }
+                else{
+                    gameState = GAME_START;
+                }
                 borderAnimation = true;
+                resumeFlag =  true;
             }
             else if (menu_selection == 1)
             {
@@ -24280,8 +24484,8 @@ void input()
             }
         }
         else if (gameState == GAME_OVER)
-        {
-            gameState = MAIN_MENU;
+        {   
+            gameState = GAME_START;
             borderAnimation = false;
              if (soundEnabled){
                music_to_play(CLICK);
@@ -24312,6 +24516,47 @@ void input()
             if (soundEnabled){
                music_to_play(CLICK);
             }
+        }
+        else if (gameState == RESUME_PAGE){
+            if (resume_selection == RESUME){
+                gameState = GAME_START;
+            }
+            else{
+                resetGame();
+                gameState = GAME_START;
+            }
+            borderAnimation = true;
+             if (soundEnabled){
+               music_to_play(CLICK);
+            }
+        }
+        else if (gameState == ACHIEVEMENTS_PAGE)
+        {
+            if (achievements_selection == 0)
+            {
+                gameState = MAIN_MENU;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+            else if (achievements_selection == 1)
+            {
+                gameState = GAME_OVER;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+            else if (achievements_selection == 2)
+            {
+                gameState = MAIN_MENU;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+        
         }
         
         
@@ -25332,3 +25577,41 @@ int music_to_play (int selection){
 }
 
 
+void resetGame(){
+    // Reset game variables
+    dirX = 0;
+    dirY = 0;
+    headX = 0;
+    headY = 0;
+    level = 1;
+    bool foodFound = true;
+    int foodX = 0;
+    int foodY = 0;
+    
+    snakeLength = STARTING_LENGTH;
+    score = 0;
+    progress = 0;
+      for (int i = 0; i < MAX_SNAKE_LENGTH; ++i)
+    {
+        snake[i].colour = fruit_color[fruitIdx];
+        snake[i].grayscale = setColour(fruit_color[fruitIdx]);
+        snake[i].x = 0;
+        snake[i].y = 0;
+        snake[i].dirX = 0;
+        snake[i].dirY = 0;
+        
+    }
+     snake[0].x = headX;
+     snake[0].y = headY;
+    srand(frame);
+}
+ 
+
+void drawResumePage()
+{
+    int textSize = 2;
+    twrite("snek", 0, 0, textSize + 3, BLUE, 0, CENTER_X + 50, CENTER_Y +10);
+    twrite("resume game", 0, 0, textSize, (resume_selection == RESUME ) ? PINK : WHITE , 0, CENTER_X + 50, CENTER_Y + 50);
+    twrite("new game", 0, 10, textSize,  (resume_selection == RESTART) ? PINK : WHITE , 0, CENTER_X + 50, CENTER_Y + 50);
+    
+}
