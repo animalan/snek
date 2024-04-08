@@ -1,10 +1,59 @@
-# Snake Game
+# Snek
 
 ### Introduction:
-The Snake game is a classic arcade game that has been enjoyed by players for decades. In this report, we will discuss the implementation of the Snake game on an FPGA platform using the C programming language. Our implementation includes several advanced features aimed at enhancing the gaming experience and demonstrating the capabilities of FPGA-based systems.
+Snek is a feature-rich variant of the classic game, Snake. It is written is C/Assembly for the NIOS II Processor in the DE1-SoC FPGA. 
+
+### How to Play.
+Arrow keys (UP, DOWN, LEFT, RIGHT) for snake movement. Move on top of the fruit to "eat" it. The snake cannot move in the reverse direction (i.e if the snake is moving up, the next move must be a right or left. It cannot move down and overlap itself). 
+Arrow Keys to navigate menus. Esc to leave menu. Enter to select menu options.
+The game is over if the snake intersects / overlaps itself.
 
 ### Features 
-**1. Integrated PS2 Keyboard for Movement Controls:**
+**1. PS2 Keyboard Controls**
+Polling-based Keyboard controls are implemented for controlling the snake's movement and navigating game menus. Interrupt-based Keyboard controls are available as well (however less reliable).
+
+**2. Complex Game FSM**
+Snek contains multiple game menus (states of the FSM). This includes a main menu, a settings menu, an achievement menu, a game over menu and a game pause menu. 
+
+**3. Double Buffering**
+Snek utilizes double buffering for animations for smoother animations and better responsiveness.
+
+**4. In-game Dynamic Animations**
+Snek involves both dynamic, programmed animations and sprite-based animations. Animations include:
+- Ripple effect: When the snake eats a fruit, the tiles change to the fruit colour and "ripple" in the direction of the snake.
+- Explosion effects: When the snake eats a fruit, an explosion effect occurs. This ultizes Midpoint circle / Bresenham's Circle algorithm.
+- Game Border Drawing: On startup, the game border is drawn.
+- Bobbing Fruit: Fruits bob up and down.
+- Slithering snake: The snake body segements move side to side, creating a slithering effect.
+These animations are all double buffered and run at different frames rates, allowing for different animation speeds to occur simultaneously.
+
+**5. Custom Sprites**
+- Custom, original sprites were designed for this game. This includes:
+- Snake Sprite (head and body sprites). Body colour is adjusted programmically.
+- 10+ Food Sprites
+- Power-up Sprites
+- Text: The PICO-8 Mono Font was ported to C-arrays and used for Snek.
+  
+**5. Grayscale Mode**
+Snek enters "grayscale mode" when the snake eats a rock. The game become monochrome and all colours are converted into grayscale equivalents. Values are computed beforehand (preloaded) to improve game performance as floating point operations are expensive and cause latency.
+
+**6. Maze Mode and Dynamic Generation**
+If the snake eats the maze powerup, the user must navigate the snake through a maze to the fruit. This maze generated randomly and dynamically using a classic depth first search, backtracking algorithm.
+
+**7. Sound Effects**
+Sound effects are played when the 
+**8. Custom Sprites**
+**9. Hex Display and LED score counters**
+**10. Double Buffering**
+
+
+
+**5. PS2 Keyboard Controls:**
+**6. PS2 Keyboard Controls:**
+**7. PS2 Keyboard Controls:**
+**8. PS2 Keyboard Controls:**
+**9. PS2 Keyboard Controls:**
+
 One of the key features of our implementation is the integration of a PS2 keyboard for both movement controls and menu navigation. Players can use the arrow keys for controlling the snake's movement and navigating through various menu options, adding convenience and familiarity to the gameplay experience.
 
 **2. Integrated Fairly Complex Finite State Machine (FSM):**
@@ -44,8 +93,8 @@ For implementing visual effects such as particle effects or dynamic animations w
 
 
 ### Controls 
-Arrow keys for snake movement.
-Esc, Enter and arrow keys to navigate menus.
+Arrow keys (UP, DOWN, LEFT, RIGHT) for snake movement.
+Arrow Keys to navigate menus. Esc to leave menu. Enter to select menu option.
 
 ### Conclusion:
 In conclusion, our implementation of the Snake game on an FPGA platform with integrated features such as PS2 keyboard support, complex FSM, dynamically generated game elements, original sprites, sound effects, smooth game control, and additional algorithms for rendering and visual effects, demonstrates the versatility and potential of FPGA-based systems for game development. The incorporation of these advanced features enhances the gameplay experience and showcases the capabilities of FPGA technology in creating immersive gaming environments.
@@ -56,15 +105,25 @@ In conclusion, our implementation of the Snake game on an FPGA platform with int
 
 | Feature                                             | Attribution                                                                                   |
 |-----------------------------------------------------|-----------------------------------------------------------------------------------------------|
-| Integrated PS2 Keyboard for Movement Controls       | Abhishek, Kovid                                                                     |
-| Integrated Fairly Complex Finite State Machine (FSM)| Kovid                        |
-| Dynamically Generated Game Maps and Bitmapped Text  |      Abhishek                  |
-| Dynamic Animations   								| Kovid, Abhishek                 |                    
-| Original Sprites               					  | Kovid                            |
-| Sound Effects                                       |Kovid                    |
-| Circle Drawing Algorithm                            | Abhishek                   |
-| Line Drawing Algorithm                              | Abhishkek                  |
-| Interrupt and Polling Based Key Handling            |  Abhishek        |
-| Hex and LED Display                                     |Abhishek                      |
-| Manipulating Color Values Algorithm                 |Kovid, Abhishek                    |
+| Integrated PS2 Keyboard for Movement Controls       | Abhishek, Kovid |
+| Double buffering| Abhishek |
+| Preloading Optimization | Abhishek, Kovid |
+| Complex Game Finite State Machine (FSM)| Kovid                        |
+| Dynamic Maze Generation (DFS)  |      Abhishek                  |
+| Explosion Effects  |      Abhishek                  |
+| Movement logic  |      Abhishek, Kovid                  |
+| Score counter  |      Abhishek                  |
+| Level indicator + progress bar  |      Abhishek                  |
+| Food animation | Kovid|
+| Graphics / Drawing functions (drawLine, drawCircle, drawBox, drawText) | Abhishek |
+|Game over menu| Kovid|
+|Start menu | Kovid, Abhishek |
+| Grayscale, RGB and HEX conversions | Abhishek, Kovid |
+| Tile ripple animation   								| Abhishek |                    
+| Custom Sprites               					  | Kovid                            |
+| Sound Effects                           |Kovid                    |
+| Polling Based Key Handling            |  Abhishek        |
+| Interupt Based Key Handling            |  Abhishek        |
+| Hex Display Interface | Abhishek 
+| LED Display                                     |Abhishek                      |
 |Particle Effects |Abhishek, Kovid|
