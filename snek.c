@@ -268,7 +268,6 @@ void the_exception(void)
 #define RED 0xF800
 #define ORANGE 0xfd00
 #define YELLOW 0xff45
-#define DARKYELLOW 0xa4c4
 #define GREEN 0x0707
 #define BLUE 0x2d7f
 #define LAVENDER 0x83b3
@@ -287,6 +286,8 @@ int entryY = 0;
 
 int exitX = 0;
 int exitY = 0;
+
+int level = 0;
 
 // #define WHITE 0xFFFF
 
@@ -393,6 +394,7 @@ struct cell
     int dirX;
     int dirY;
     unsigned short int colour;
+    unsigned short int grayscale;
 };
 
 struct cell snake[MAX_SNAKE_LENGTH];
@@ -409,6 +411,8 @@ char misc[1][5][3];
 
 unsigned int fruits[8][9][9];
 unsigned int fruit_color[8];
+unsigned int fruit_grayscale[8];
+
 unsigned int snake_head_red[9][9];
 unsigned int snake_body_red[9][9];
 
@@ -471,6 +475,7 @@ void drawMaze();
 
 // Text
 void twrite(char *text, int x, int y, int size, int COLOUR, int typeDuration, int offsetX, int offsetY);
+int progress = 0;
 
 #define MAZE_SIZE 9
 int maze[MAZE_SIZE][MAZE_SIZE];
@@ -551,23 +556,70 @@ bool mazeMode = false;
 int explosionX = 0;
 int explosionY = 0;
 
-
-
 #define EXPAND_LOWERBOUND 6
 #define EXPAND_UPPERBOUND 8
 #define EXPAND_RATE 5
 #define TILE_COLOUR DARKGREY
 
-int expandLength = 8;
+int expandLength = 6;
 int waveMarker = -666;
 int finalDirX = 0;
 int finalDirY = 0;
 
 int mazeBuff;
 
+bool grayscaleMode = false;
+
+struct rgb
+{
+    int r;
+    int g;
+    int b;
+};
+
+struct rgb HexToRGB(int hexColour)
+{
+    int r = (hexColour >> 11) & 0x1F;
+    int g = (hexColour >> 5) & 0x3F;
+    int b = hexColour & 0x1F;
+
+    struct rgb colour;
+    colour.r = r;
+    colour.g = g;
+    colour.b = b;
+
+    return colour;
+}
+
+int RGBToHex(int r, int g, int b)
+{
+    int hex = (r << 11 | g << 5 | b);
+    // hex = (hex << 4) + g;
+    // hex = hex << 4 + b;
+    return hex;
+}
+
+int setColour(int colour)
+{
+   
+        struct rgb RGB = HexToRGB(colour);
+
+        // Grayscale
+        // int average = (RGB.r + RGB.g + RGB.b) / 3;
+        int grayscale = (0.2126 * RGB.r) + (0.7152 * RGB.g / 2.0) + (0.0722 * RGB.b);
+
+        // printf("AVERAGE: %d\n", grayscale);
+        return (grayscale<<11)+(grayscale<<6)+grayscale;
+}
+int grayScaleCount = 0;
+
+
 int main(void)
 {
+// printf("%x\n", setColour(RED));
+    // printf("%d %d %d\n", HexToRGB(RGBToHex(31 , 62, 0)).r, HexToRGB(RGBToHex(31 , 62, 0)).g, HexToRGB(RGBToHex(31 , 62, 0)).b );
 
+    // while(true) {}
     // Interrupts
     // *(pPS2 + 1) = 0x1;     // Turn on PS2 interrupt.
     // NIOS2_WRITE_IENABLE(0b10000011); // IRQ Enable.
@@ -611,6 +663,8 @@ int main(void)
     for (int i = 0; i < snakeLength; ++i)
     {
         snake[i].colour = fruit_color[fruitIdx];
+        snake[i].grayscale = setColour(fruit_color[fruitIdx]);
+        
     }
 
     // Border animation on front buffer.
@@ -624,6 +678,12 @@ int main(void)
 
     snake[0].x = headX;
     snake[0].y = headY;
+
+    
+    for(int i = 0; i < NUM_OF_FRUITS; ++i)
+    {
+        fruit_grayscale[i] = setColour(fruit_color[i]);
+    }
 
     // Game loop.
     while (TRUE)
@@ -710,7 +770,7 @@ int main(void)
                         {
                             for (int k = 0; k < SCALE - expandLength; ++k)
                             {
-
+                                int rippleColour = (grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx];
                                 // -->
                                 if (finalDirX == 1)
                                 {
@@ -733,7 +793,7 @@ int main(void)
                                         // }
 
                                         plot_pixel(x * SCALE + k + TOP_LEFT_X + expandLength / 2,
-                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, fruit_color[fruitIdx]);
+                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, rippleColour);
                                     }
                                 }
                                 // <--
@@ -749,7 +809,7 @@ int main(void)
 
 
                                         plot_pixel(x * SCALE + k + TOP_LEFT_X + expandLength / 2,
-                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, fruit_color[fruitIdx]);
+                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, rippleColour);
                                     }
                                 }
                                 // ^
@@ -765,7 +825,7 @@ int main(void)
 
 
                                         plot_pixel(x * SCALE + k + TOP_LEFT_X + expandLength / 2,
-                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, fruit_color[fruitIdx]);
+                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2,rippleColour);
                                     }
                                 }
                                 // V
@@ -780,14 +840,14 @@ int main(void)
                                     {
 
                                         plot_pixel(x * SCALE + k + TOP_LEFT_X + expandLength / 2,
-                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, fruit_color[fruitIdx]);
+                                                y * SCALE + j + TOP_LEFT_Y + expandLength / 2, rippleColour);
                                     }
                                 }
                                 else
                                 {
 
                                     plot_pixel(x * SCALE + k + TOP_LEFT_X + expandLength / 2,
-                                            y * SCALE + j + TOP_LEFT_Y + expandLength / 2, fruit_color[fruitIdx]);
+                                            y * SCALE + j + TOP_LEFT_Y + expandLength / 2, rippleColour);
                                 }
                             }
                         }
@@ -838,7 +898,7 @@ int main(void)
                         if (currFrame.explosionRadius < EXPLOSION_RADIUS)
                         {
                             drawCircle(explosionX, explosionY, currFrame.explosionRadius, WHITE);
-                            drawCircle(explosionX, explosionY, currFrame.explosionRadius - 5, fruit_color[fruitIdx]);
+                            drawCircle(explosionX, explosionY, currFrame.explosionRadius - 5, (grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx]);
                         }
                         else
                         {
@@ -870,7 +930,8 @@ int main(void)
 
 
             if (mazeMode && mazeBuff < 4)
-            {
+            {   
+                clear_screen(CLEAR);
                 drawMaze(BLUE, BLACK);
                 drawBox(entryX, entryY, SCALE, RED, TOP_LEFT_X, TOP_LEFT_Y);
                 mazeBuff++;
@@ -881,26 +942,34 @@ int main(void)
 
             // Plot food item.
             if (foodFound)
-            {
-                if (fruitIdx == 3)
+            {   
+                grayScaleCount++;
+
+                if (grayScaleCount == 3) {grayscaleMode = false; grayScaleCount = 0;}
+             
+                // if (fruitIdx == 3)
+                // {
+                //     // clear_screen(CLEAR);
+                //     // printf("MAZEMODE.\n");
+                //     // mazeMode = true;
+                //     // generateMaze();
+
+                //     // headX = entryX;
+                //     // headY = entryY;
+
+                //     // foodX = exitX;
+                //     // foodY = exitY;
+
+                //     // foodFound = false;
+
+                //     // mazeBuff = 0;
+                // }
+                if (fruitIdx ==7) 
                 {
-                    clear_screen(CLEAR);
-                    printf("MAZEMODE.\n");
-                    mazeMode = true;
-                    generateMaze();
-
-                    headX = entryX;
-                    headY = entryY;
-
-                    foodX = exitX;
-                    foodY = exitY;
-
-                    foodFound = false;
-
-                    mazeBuff = 0;
+                    grayscaleMode = true;
                 }
-                else
-                {
+                
+                // {
                     foodFound = false;
                     // Generate new food position.
                     foodX = rand() % (RANDOM_RANGE + 1);
@@ -915,13 +984,13 @@ int main(void)
                     {
                         fruitIdx = rand() % NUM_OF_FRUITS;
                     }
-                }
+                // }
 
             }
 
               // Draw game border.
-            drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, fruit_color[fruitIdx], 0);
-            drawBorder(TOP_LEFT_X - 4, TOP_LEFT_Y - 4, (GAME_WIDTH + 1) * (SCALE) + 8, fruit_color[fruitIdx], 0);
+            drawBorder(TOP_LEFT_X - 1, TOP_LEFT_Y - 1, (GAME_WIDTH + 1) * (SCALE) + 2, (grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx], 0);
+            drawBorder(TOP_LEFT_X - 4, TOP_LEFT_Y - 4, (GAME_WIDTH + 1) * (SCALE) + 8, (grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx], 0);
 
 
 
@@ -1001,10 +1070,14 @@ int main(void)
 
                 foodFound = true;
 
+                progress = score % 6;
+                if (progress == 0) {level++;}
+                sprintf(text, "######", level);
+                twrite(text, 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 26, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            
                 finalDirX = dirX;
                 finalDirY = dirY;
-
-                printf("%d %d\n", finalDirX, finalDirY);
+                // printf("%d %d\n", finalDirX, finalDirY);
 
                 // animationX = headX;
                 // animationY = headY;
@@ -1013,6 +1086,7 @@ int main(void)
                 snakeLength++;
                 // snake[snakeLength - 1].active = TRUE; // Set cell to active.
                 snake[snakeLength - 1].colour = fruit_color[fruitIdx];
+                snake[snakeLength - 1].grayscale = fruit_grayscale[fruitIdx];
 
                 // Update score.
                 score = snakeLength - 1;
@@ -1045,17 +1119,22 @@ int main(void)
                 {
                     if (i == 0 || i == 1)
                     {
-                        drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0, snake[i].colour);
+                        drawSnake(headX, headY, SCALE, snake_head_red, snake[i].dirX, snake[i].dirY, 0,  grayscaleMode ? snake[i].grayscale : snake[i].colour);
+                        // printf("%x\n", setColour(snake[i].colour));
                     }
                     else if (i % 2 == 0)
                     {
                         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetEven,
-                                snake[i].colour);
+                                grayscaleMode ? snake[i].grayscale : snake[i].colour);
+                                // printf("%x\n", setColour(snake[i].colour));
+
                     }
                     else
                     {
                         drawSnake(snake[i].x, snake[i].y, SCALE, snake_body_red, snake[i].dirX, snake[i].dirY, offsetOdd,
-                                snake[i].colour);
+                                grayscaleMode ? snake[i].grayscale : snake[i].colour);
+                                    // printf("%x\n", setColour(snake[i].colour));
+
                     }
                 }
             }
@@ -1063,22 +1142,67 @@ int main(void)
             *pLED = score;
             displayHex(score);
 
-            twrite("score", 0, 0, 2, (int)fruit_color[fruitIdx], 0, TOP_LEFT_X, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
-            twrite("score", 0, 0, 2, WHITE, 0, TOP_LEFT_X - 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH - 1);
+            // Score word
+            // twrite("score", 0, 0, 2, (int)fruit_color[fruitIdx], 0, TOP_LEFT_X, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // twrite("score", 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH - 1);
 
-            sprintf(text, "%d", prevFrameTwo.score);
+            // sprintf(text, "%d", prevFrameTwo.score);
 
             // // Clear score.
-            twrite("#####", 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
-            twrite("#####", 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+            // twrite("#####", 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // twrite("#####", 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
 
             // twrite(text, 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8 - 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH -1);
 
-            sprintf(text, "%d", score);
-            twrite(text, 0, 0, 2, (int)fruit_color[fruitIdx], 0, TOP_LEFT_X + 6 * 8 + 1,
-                   TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+            // Score number
+            // sprintf(text, "%d", score);
+            
+            // Drop shadow
+            // twrite(text, 0, 0, 2, (int)fruit_color[fruitIdx], 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+            
+            
+            // Score
+            twrite("score", 0, 0, 2, ((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // twrite("score", 0, 0, 2, WHITE, 0, TOP_LEFT_X + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
 
-            twrite(text, 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // Score Number
+            sprintf(text, "%d", score);
+            twrite(text, 0, 0, 2, ((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // twrite(text, 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+
+
+            // Level
+            twrite("level", 0, 0, 2,((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X + 6 * 19, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            // twrite("level", 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 12 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+            
+            // Level Number
+            // twrite(text, 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
+              sprintf(text, "######", level);
+                twrite(text, 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 26, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            sprintf(text, "%d", level);
+            twrite(text, 0, 0, 2, ((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X + 6 * 26, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
+            
+            
+            // Progress bar
+            // Background
+            for (int j = 0; j < SCALE / 2; ++j)
+            {
+                for (int k = 0; k < SCALE * 6; ++k)
+                {
+                    plot_pixel(TOP_LEFT_X + (3*38) + k, TOP_LEFT_Y + ((GAME_WIDTH + 3) * SCALE) + j + 4, (WHITE));
+                }
+            }
+            
+
+            // Indicator
+            for (int j = 0; j < SCALE / 2; ++j)
+            {
+                for (int k = 0; k < SCALE * progress; ++k)
+                {
+                    plot_pixel(TOP_LEFT_X + (3*38) + k, TOP_LEFT_Y + ((GAME_WIDTH + 3) * SCALE) + j + 4, ((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx]));
+                }
+            }
+
             // twrite(text, 0, 0, 2, BLUE, 0, TOP_LEFT_X + 6 * 8 - 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH -1);
 
             // // Clear snake.
@@ -1091,9 +1215,6 @@ int main(void)
             // for (int i = 0; i < 1000000; ++i);
 
             // Wait for buffer swap to set write buffer.
-
-
-
 
 
 
@@ -1133,6 +1254,7 @@ int main(void)
 // {
 // *(PS2_ptr) = 0xF4;
 // }
+
 
 int dir[4][2] = {
     {0, -1}, // North
@@ -1781,9 +1903,9 @@ void generateMaze()
     {
         for (int x = 0; x < (MAZE_SIZE * 2 + 1); ++x)
         {
-            printf("%d", mazeData[y][x]);
+            // printf("%d", mazeData[y][x]);
         }
-        printf("\n");
+        // printf("\n");
     }
 
 }
