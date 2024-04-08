@@ -561,7 +561,7 @@ int explosionY = 0;
 #define EXPAND_RATE 5
 #define TILE_COLOUR DARKGREY
 
-int expandLength = 6;
+int expandLength = 8;
 int waveMarker = -666;
 int finalDirX = 0;
 int finalDirY = 0;
@@ -1162,10 +1162,13 @@ int main(void)
             
             
             // Score
+
             twrite("score", 0, 0, 2, ((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
             // twrite("score", 0, 0, 2, WHITE, 0, TOP_LEFT_X + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
 
             // Score Number
+            sprintf(text, "######", level);
+            twrite(text, 0, 0, 2, CLEAR, 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
             sprintf(text, "%d", score);
             twrite(text, 0, 0, 2, ((int)((grayscaleMode) ? fruit_grayscale[fruitIdx] : fruit_color[fruitIdx])), 0, TOP_LEFT_X + 6 * 8, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH);
             // twrite(text, 0, 0, 2, WHITE, 0, TOP_LEFT_X + 6 * 8 + 1, TOP_LEFT_Y + (SCALE + 1) * GAME_WIDTH + 1);
