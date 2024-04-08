@@ -302,7 +302,7 @@ int exitY = 0;
 
 int level = 0;
 
-
+int powerupDelay = 5000;
 //sound effects
 #define FAIL  1
 #define EAT 2
@@ -23493,6 +23493,10 @@ int setColour(int colour)
 
 int main(void)
 {
+
+
+    for(int i = 0; i < powerupDelay; i++) {}
+
 // printf("%x\n", setColour(RED));
     // printf("%d %d %d\n", HexToRGB(RGBToHex(31 , 62, 0)).r, HexToRGB(RGBToHex(31 , 62, 0)).g, HexToRGB(RGBToHex(31 , 62, 0)).b );
 
@@ -23940,8 +23944,10 @@ int main(void)
 
                 if (grayScaleCount == 3) {grayscaleMode = false; grayScaleCount = 0;}
                     
-                    if (fruitIdx == 16 || (score % 5 == 0 && score > 0))
+                    if (fruitIdx == 16 || (score % 10 == 0 && score > 0))
                     {
+                        totalMazeCompleted++;
+                        totalPowerUpsEaten++;
                         mazeDrawFlag = false;
                         mazeMode = true;
                         clear_screen(CLEAR);
@@ -23968,7 +23974,28 @@ int main(void)
 
                     if (fruitIdx ==7 && greyScaleEnabled) 
                     {
+                        totalGreyScaleModeCompleted++;
                         grayscaleMode = true;
+                    }
+                    
+                    // Time fast
+                    if (fruitIdx == 14 && powerUpsEnabled)
+                    {
+                        totalPowerUpsEaten++;
+
+                        powerupDelay = 0;
+                    }
+
+                    // Time slow
+                    else if (fruitIdx == 15 && powerUpsEnabled)
+                    {
+                        totalPowerUpsEaten++;
+
+                        powerupDelay = 100000;
+                    }
+                    else
+                    {
+                        powerupDelay = 5000;
                     }
 
                     foodFound = false;
@@ -25453,7 +25480,7 @@ void drawAcheivementsPage()
     }
     else if (achievements_selection == ACHIEVEMENT_3_PAGE)
     {
-        twrite("50 greyscale level completed", 30, 40, 2, (totalPowerUpsEaten >= ACHIEVEMENT_2_GREYSCALE) ? GREEN : RED, 0, 0, 0);
+        twrite("50 greyscale level completed", 30, 40, 2, (totalGreyScaleModeCompleted >= ACHIEVEMENT_2_GREYSCALE) ? GREEN : RED, 0, 0, 0);
         twrite("50 powerups eaten", 50, 60, 2, (totalPowerUpsEaten >= ACHIEVEMENT_1_POWERUP) ? GREEN : RED, 0, 0, 0);
         twrite("200 powerups eaten", 50, 80, 2, (totalPowerUpsEaten >= ACHIEVEMENT_2_POWERUP) ? GREEN : RED, 0, 0, 0);
         twrite("use up down keys to switch page (3 of 3)", 90, 200, 1, WHITE, 0, 0, 0);
