@@ -338,6 +338,7 @@ int level = 0;
 #define GAME_OVER 4
 #define GAME_PAUSE 5
 #define ACHIEVEMENTS_PAGE 6
+#define RESUME_PAGE 7
 
 // MAINMENU SELECTIONS
 #define START_GAME 0
@@ -365,6 +366,9 @@ int level = 0;
 #define ACHIEVEMENT_2_PAGE 1
 #define ACHIEVEMENT_3_PAGE 2
 
+//RESUME SELECTION
+#define RESUME 0
+#define RESTART 1
 
 //SETTINGS SELECTIONS
 #define SOUND 0
@@ -407,6 +411,11 @@ int headY = 0;
 int dirX = 0;
 int dirY = 0;
 
+int prevDirX = 0;
+int prevDirY = 0;
+
+
+
 int acceptInput = TRUE;
 int snakeLength = 1;
 
@@ -423,8 +432,9 @@ double animationX = 0;
 double animationY = 0;
 
 int menu_selection = START_GAME;
-int gameState = ACHIEVEMENTS_PAGE;
-int totalFoodEaten = ACHIEVEMENT_3_FOOD;
+int gameState = MAIN_MENU;
+int resume_selection = RESUME;
+int totalFoodEaten = 0;
 int totalPowerUpsEaten = 0;
 int totalMazeCompleted = 0;
 int totalGreyScaleModeCompleted = 0;
@@ -533,7 +543,8 @@ void displayHex(int number);
 void path(int currX, int currY);
 void generateMaze();
 void drawMaze();
-
+void resetGame();
+void drawResumePage();
 // Text
 void twrite(char *text, int x, int y, int size, int COLOUR, int typeDuration, int offsetX, int offsetY);
 int progress = 0;
@@ -544,7 +555,7 @@ int mazeData[MAZE_SIZE * 2 + 1][MAZE_SIZE * 2 + 1];
 
 int dir[4][2];
 
-
+bool resumeFlag = false;
 struct frame
 {
     int explosionRadius;
@@ -23493,7 +23504,15 @@ int main(void)
             
            // clearParticles();
         }
-       
+        else if (gameState == RESUME_PAGE){
+             if (clearbuff < 4){
+                    clear_screen(CLEAR);
+                    clearbuff++;
+                }
+          //  drawParticles();
+        
+            drawResumePage();
+        }
 
         else if (gameState == GAME_START){
              if (clearbuff < 4){
@@ -23822,22 +23841,45 @@ int main(void)
             // Boundary checks.
             // printf("%d\n-- %d\n", headX + dirX, mazeData[headY][headX]);
 
-            if (headX + dirX < 0 || headX + dirX > GAME_WIDTH)
-            {
-                dirX = 0;
-            }
 
-            if (headY + dirY < 0 || headY + dirY > GAME_WIDTH)
-            {
-                dirY = 0;
-            }
-
+            printf("%d %d\n", dirX, dirY);
+            
             if (mazeMode && mazeData[headY + dirY][headX + dirX] == 0)
             {
                 // printf("wall\n");
             }
+            
+            
+            if (!mazeMode)
+            {
+                if (dirX != 0 && dirX == (prevDirX * -1))
+                {
+                    printf("No reversal.\n");
+                    dirX *= -1;
+                }
+            
+                if (dirY != 0 && dirY == (prevDirY * -1))
+                {
+                    printf("No reversal.\n");
+                    dirY *= -1;
+                }
+            }
+            
+            if (headX + dirX < 0 || headX + dirX > GAME_WIDTH)
+            {
+                // dirX = 0;
+            }
+            else if (headY + dirY < 0 || headY + dirY > GAME_WIDTH)
+            {
+                // dirY = 0;
+            }
             else if (frameCount % (REFRESH_RATE / SNAKE_FRAME_RATE) == 0)
             {
+
+                
+                prevDirX = dirX;
+                prevDirY = dirY;
+                
                 // Move head
                 headX += dirX;
                 headY += dirY;
@@ -23850,19 +23892,30 @@ int main(void)
 
                 // Check for body intersection.
                 // Avoid snake from collapsing into itself.
+                
+                // Check for reverse/
+                // if (snake[1].x == snake[0].x && snake[1].y == snake[0].y)
+                // {
+                //     dirX *= -1;
+                //     dirY *= -1;
+                // }
+                // else
+                // {
+                    // Should i = 2?
 
-                // Should i = 2?
-                //   for (int i = 2; i < snakeLength; i++)
-                // {
-
-                //   if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
-                // {
-                //   while(true)
-                // {
-                // printf("%d(%d, %d) %d(%d, %d)", i, snake[i].x, snake[i].y);
-                //}
-                //}
-                //}
+                // Body intersection
+                for (int i = 3; i < snakeLength; i++)
+                {
+                    if (snake[i].x == snake[0].x && snake[i].y == snake[0].y)
+                    {
+                        clearbuff = 0;
+                        gameState = GAME_OVER;
+                        resetGame();
+                        resumeFlag = false;
+                    }
+                }
+                // }
+                
 
                 // Update positions of the rest of snake body.
                 if (dirX != 0 || dirY != 0)
@@ -23883,6 +23936,7 @@ int main(void)
             if (headX == foodX && headY == foodY)
             {
                 drawExplosion = true;
+                totalFoodEaten++;
                 music_to_play(EAT);
                 showAnimation = true;
 
@@ -24094,6 +24148,8 @@ void input()
     int previousKey = byte2;
     int PS2_data, RVALID;
 
+    srand(byte3);
+
     // Handle key input via polling.
 
     PS2_data = *(pPS2);           // read the Data register in the PS/2 port
@@ -24114,18 +24170,18 @@ void input()
        
 
         
-if  (gameState == GAME_START){
-        dirX = -1;
-        dirY = 0;
-}
+    if  (gameState == GAME_START){
+            dirX = -1;
+            dirY = 0;
     }
+        }
     else if (byte3 == RIGHT_KEY && acceptInput)
     {
         acceptInput = FALSE;
        
 
         // printf("RIGHT KEY\n");
-
+   
         dirX = 1;
         dirY = 0;
     }
@@ -24133,6 +24189,7 @@ if  (gameState == GAME_START){
     {
          acceptInput = FALSE;
         
+       
         
         // Main menu handling
         if (gameState == MAIN_MENU)
@@ -24167,6 +24224,14 @@ if  (gameState == GAME_START){
                 achievements_selection = (achievements_selection - 1) % 3;
             }
         }
+        else if (gameState == RESUME_PAGE){
+            if (resume_selection == 0){
+                resume_selection = 1;
+            }
+            else{
+                resume_selection = 0;
+            }
+        }
        
         // printf("UP KEY\n");
         if (gameState == GAME_START)
@@ -24192,7 +24257,14 @@ if  (gameState == GAME_START){
             clearbuff = 0;
             achievements_selection = (achievements_selection + 1) % 3;
         }
-
+         else if (gameState == RESUME_PAGE){
+            if (resume_selection == 0){
+                resume_selection = 1;
+            }
+            else{
+                resume_selection = 0;
+            }
+        }
         
         if (gameState == GAME_START){
             dirX = 0;
@@ -24213,8 +24285,14 @@ if  (gameState == GAME_START){
         {
             if (menu_selection == 0)
             {
-                gameState = GAME_START;
+                if (resumeFlag == true){
+                    gameState = RESUME_PAGE;
+                }
+                else{
+                    gameState = GAME_START;
+                }
                 borderAnimation = true;
+                resumeFlag =  true;
             }
             else if (menu_selection == 1)
             {
@@ -24229,8 +24307,8 @@ if  (gameState == GAME_START){
             }
         }
         else if (gameState == GAME_OVER)
-        {
-            gameState = MAIN_MENU;
+        {   
+            gameState = GAME_START;
             borderAnimation = false;
              if (soundEnabled){
                music_to_play(CLICK);
@@ -24261,6 +24339,47 @@ if  (gameState == GAME_START){
             if (soundEnabled){
                music_to_play(CLICK);
             }
+        }
+        else if (gameState == RESUME_PAGE){
+            if (resume_selection == RESUME){
+                gameState = GAME_START;
+            }
+            else{
+                resetGame();
+                gameState = GAME_START;
+            }
+            borderAnimation = true;
+             if (soundEnabled){
+               music_to_play(CLICK);
+            }
+        }
+        else if (gameState == ACHIEVEMENTS_PAGE)
+        {
+            if (achievements_selection == 0)
+            {
+                gameState = MAIN_MENU;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+            else if (achievements_selection == 1)
+            {
+                gameState = GAME_OVER;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+            else if (achievements_selection == 2)
+            {
+                gameState = MAIN_MENU;
+                borderAnimation = false;
+                 if (soundEnabled){
+               music_to_play(CLICK);
+            }
+            }
+        
         }
         
         
@@ -25281,4 +25400,41 @@ int music_to_play (int selection){
 }
 
 
+void resetGame(){
+    // Reset game variables
+    dirX = 0;
+    dirY = 0;
+    headX = 0;
+    headY = 0;
+    level = 1;
+    bool foodFound = true;
+    int foodX = 0;
+    int foodY = 0;
+    
+    snakeLength = STARTING_LENGTH;
+    score = 0;
+    progress = 0;
+      for (int i = 0; i < MAX_SNAKE_LENGTH; ++i)
+    {
+        snake[i].colour = fruit_color[fruitIdx];
+        snake[i].grayscale = setColour(fruit_color[fruitIdx]);
+        snake[i].x = 0;
+        snake[i].y = 0;
+        snake[i].dirX = 0;
+        snake[i].dirY = 0;
+        
+    }
+     snake[0].x = headX;
+     snake[0].y = headY;
+  
+}
+ 
 
+void drawResumePage()
+{
+    int textSize = 2;
+    twrite("snek", 0, 0, textSize + 3, BLUE, 0, CENTER_X + 50, CENTER_Y +10);
+    twrite("resume game", 0, 0, textSize, (resume_selection == RESUME ) ? PINK : WHITE , 0, CENTER_X + 50, CENTER_Y + 50);
+    twrite("new game", 0, 10, textSize,  (resume_selection == RESTART) ? PINK : WHITE , 0, CENTER_X + 50, CENTER_Y + 50);
+    
+}
