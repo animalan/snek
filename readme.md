@@ -3,6 +3,9 @@
 ### Introduction:
 Snek is a feature-rich variant of the classic game, Snake. It is written is C/Assembly for the NIOS II Processor in the DE1-SoC FPGA. 
 
+![image](https://github.com/user-attachments/assets/2cdab17e-9ff7-4227-b1de-e2822b69bde7)
+![image](https://github.com/user-attachments/assets/ad964652-455c-46c5-a61d-ee906c76b69f)
+
 ### How to Play.
 Arrow keys (UP, DOWN, LEFT, RIGHT) for snake movement. Move on top of the fruit to "eat" it. The snake cannot move in the reverse direction (i.e if the snake is moving up, the next move must be a right or left. It cannot move down and overlap itself). 
 Arrow Keys to navigate menus. Esc to leave menu. Enter to select menu options.
